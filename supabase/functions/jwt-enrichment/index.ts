@@ -8,11 +8,14 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 Deno.serve(async (req: Request) => {
   try {
-    const { user_id } = await req.json()
+    // Supabase sends the full claims object + user_id in the request body.
+    // We must return ALL standard claims plus our custom fields.
+    const body = await req.json()
+    const { user_id, claims } = body
 
-    if (!user_id) {
+    if (!user_id || !claims) {
       return new Response(
-        JSON.stringify({ error: 'Missing user_id' }),
+        JSON.stringify({ error: 'Missing user_id or claims' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       )
     }
@@ -29,27 +32,19 @@ Deno.serve(async (req: Request) => {
       .eq('is_active', true)
       .single()
 
-    // No staff record = new user still in onboarding, or deactivated staff.
-    // Return empty claims — AuthCallback routes them to /setup.
-    // ProtectedRoute blocks portal access if role is absent.
-    if (!staffRecord) {
-      // No staff record = new user in onboarding.
-      // Return empty claims object — AuthCallback routes them to /setup.
-      return new Response(
-        JSON.stringify({ claims: {} }),
-        { headers: { 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // Return only what RLS policies need — no PII in JWT.
-    // totp_required defaults to true if column not yet present (safe fallback).
+    // Spread the incoming standard claims, then add our custom fields.
+    // For new users with no staff record, return standard claims unchanged —
+    // AuthCallback will route them to /setup; ProtectedRoute blocks portal access.
     return new Response(
       JSON.stringify({
         claims: {
-          clinic_id:     staffRecord.clinic_id,
-          staff_id:      staffRecord.id,
-          role:          staffRecord.role,
-          totp_required: staffRecord.totp_required ?? true,
+          ...claims,
+          ...(staffRecord ? {
+            clinic_id:     staffRecord.clinic_id,
+            staff_id:      staffRecord.id,
+            app_role:      staffRecord.role,
+            totp_required: staffRecord.totp_required ?? true,
+          } : {}),
         }
       }),
       { headers: { 'Content-Type': 'application/json' } }

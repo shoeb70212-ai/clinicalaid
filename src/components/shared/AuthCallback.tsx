@@ -28,11 +28,12 @@ export default function AuthCallback() {
         if (refreshed?.session) s = refreshed.session
       }
 
-      const appClaims = s.user.app_metadata as { role?: string; totp_required?: boolean }
+      // Custom claims are injected directly into the JWT payload by the hook
+      const jwtClaims = s.user as unknown as { app_role?: string; totp_required?: boolean }
 
       const { data: mfaData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
       const needsMfa =
-        appClaims.totp_required !== false &&
+        jwtClaims.totp_required !== false &&
         mfaData?.nextLevel === 'aal2' &&
         mfaData?.currentLevel !== 'aal2'
 
@@ -41,7 +42,7 @@ export default function AuthCallback() {
         return
       }
 
-      const role = appClaims.role
+      const role = jwtClaims.app_role
       if (role === 'doctor' || role === 'admin') {
         navigate('/doctor', { replace: true })
       } else if (role === 'receptionist') {
