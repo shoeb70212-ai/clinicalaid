@@ -20,9 +20,11 @@ async function routeBySession(session: { user: { id: string } }, navigate: (path
     .eq('is_active', true)
     .single()
 
-  if (staffError) {
-    console.error('[AuthCallback] Staff query error:', staffError.message)
-  }
+  console.log('[AuthCallback] Staff query result:', { 
+    hasData: !!staffRecord, 
+    error: staffError?.message,
+    role: staffRecord?.role 
+  })
 
   if (!staffRecord) {
     // No staff record = new user going to onboarding
@@ -61,26 +63,33 @@ export default function AuthCallback() {
   useEffect(() => {
     console.log('[AuthCallback] mounted, url:', window.location.href)
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('[AuthCallback] getSession result:', session ? 'HAS SESSION' : 'NO SESSION', session?.user?.id)
-      if (session) { routeBySession(session, navigate); return }
-
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-        console.log('[AuthCallback] onAuthStateChange event:', event, session?.user?.id)
-        if (event === 'SIGNED_IN' && session) {
-          subscription.unsubscribe()
-          routeBySession(session, navigate)
+    // Small delay to ensure session is fully established
+    setTimeout(() => {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        console.log('[AuthCallback] getSession result:', session ? 'HAS SESSION' : 'NO SESSION', session?.user?.id)
+        
+        if (session) { 
+          routeBySession(session, navigate); 
+          return 
         }
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          console.log('[AuthCallback] onAuthStateChange event:', event, session?.user?.id)
+          if (event === 'SIGNED_IN' && session) {
+            subscription.unsubscribe()
+            routeBySession(session, navigate)
+          }
+        })
+
+        const timeout = setTimeout(() => {
+          console.log('[AuthCallback] TIMEOUT — no session after 10s, redirecting to login')
+          subscription.unsubscribe()
+          navigate('/login', { replace: true })
+        }, 10000)
+
+        return () => { clearTimeout(timeout); subscription.unsubscribe() }
       })
-
-      const timeout = setTimeout(() => {
-        console.log('[AuthCallback] TIMEOUT — no session after 8s, redirecting to login')
-        subscription.unsubscribe()
-        navigate('/login', { replace: true })
-      }, 8000)
-
-      return () => { clearTimeout(timeout); subscription.unsubscribe() }
-    })
+    }, 500) // 500ms delay to ensure session is ready
   }, [navigate])
 
   return <LoadingSpinner fullScreen />
