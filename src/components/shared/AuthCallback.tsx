@@ -19,19 +19,44 @@ export default function AuthCallback() {
     processed.current = true
 
     async function handleCallback() {
-      // exchangeCodeForSession reads `code` from the URL automatically
-      const { data, error } = await supabase.auth.exchangeCodeForSession(window.location.href)
+      let session = null
 
-      if (error || !data.session) {
-        // OAuth failed or code was already consumed — send back to login
+      const hash = window.location.hash
+      const query = window.location.search
+
+      if (hash.includes('access_token=')) {
+        // Implicit flow — Supabase auto-processes the hash fragment.
+        // Wait for onAuthStateChange to fire with the session.
+        const { data: { session: hashSession } } = await supabase.auth.getSession()
+        if (hashSession) {
+          session = hashSession
+        } else {
+          // Session not yet set — wait for the auth state change event
+          await new Promise<void>((resolve) => {
+            const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+              if (event === 'SIGNED_IN' && s) {
+                session = s
+                subscription.unsubscribe()
+                resolve()
+              }
+            })
+            // Timeout after 5s to avoid hanging
+            setTimeout(() => { subscription.unsubscribe(); resolve() }, 5000)
+          })
+        }
+      } else if (query.includes('code=')) {
+        // PKCE flow
+        const { data, error } = await supabase.auth.exchangeCodeForSession(window.location.href)
+        if (!error && data.session) session = data.session
+      }
+
+      if (!session) {
         navigate('/login', { replace: true })
         return
       }
 
-      let session = data.session
-
-      // If the JWT enrichment Edge Function had a cold start, app_metadata may be empty
-      // on the first exchange. Refresh once to get the enriched JWT before routing.
+      // If the JWT enrichment Edge Function had a cold start, app_metadata may be empty.
+      // Refresh once to get the enriched JWT before routing.
       if (!session.user.app_metadata?.role) {
         const { data: refreshed } = await supabase.auth.refreshSession()
         if (refreshed?.session) session = refreshed.session

@@ -22,19 +22,22 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    const { data: staffRecord, error } = await supabase
+    const { data: staffRecord } = await supabase
       .from('staff')
       .select('id, clinic_id, role, is_active, totp_required')
       .eq('user_id', user_id)
       .eq('is_active', true)
       .single()
 
-    // V1: one staff member = one clinic.
-    // If staff record not found or inactive — deny login.
-    if (error || !staffRecord) {
+    // No staff record = new user still in onboarding, or deactivated staff.
+    // Return empty claims — AuthCallback routes them to /setup.
+    // ProtectedRoute blocks portal access if role is absent.
+    if (!staffRecord) {
+      // No staff record = new user in onboarding.
+      // Return empty claims object — AuthCallback routes them to /setup.
       return new Response(
-        JSON.stringify({ error: 'Staff record not found or account is inactive.' }),
-        { status: 403, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({ claims: {} }),
+        { headers: { 'Content-Type': 'application/json' } }
       )
     }
 
@@ -42,10 +45,12 @@ Deno.serve(async (req: Request) => {
     // totp_required defaults to true if column not yet present (safe fallback).
     return new Response(
       JSON.stringify({
-        clinic_id:     staffRecord.clinic_id,
-        staff_id:      staffRecord.id,
-        role:          staffRecord.role,
-        totp_required: staffRecord.totp_required ?? true,
+        claims: {
+          clinic_id:     staffRecord.clinic_id,
+          staff_id:      staffRecord.id,
+          role:          staffRecord.role,
+          totp_required: staffRecord.totp_required ?? true,
+        }
       }),
       { headers: { 'Content-Type': 'application/json' } }
     )
