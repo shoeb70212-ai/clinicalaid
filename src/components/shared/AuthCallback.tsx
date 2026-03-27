@@ -12,24 +12,32 @@ import { LoadingSpinner } from './LoadingSpinner'
 async function routeBySession(session: { user: { id: string } }, navigate: (path: string, opts?: { replace: boolean }) => void) {
   console.log('[AuthCallback] routeBySession started, user:', session.user.id)
 
-  // Query staff table directly using the user's ID
+  // Query staff table directly using the user's ID (don't filter by is_active yet)
   const { data: staffRecord, error: staffError } = await supabase
     .from('staff')
     .select('id, clinic_id, role, is_active, totp_required')
     .eq('user_id', session.user.id)
-    .eq('is_active', true)
     .single()
 
   console.log('[AuthCallback] Staff query result:', { 
     hasData: !!staffRecord, 
     error: staffError?.message,
-    role: staffRecord?.role 
+    role: staffRecord?.role,
+    isActive: staffRecord?.is_active
   })
 
   if (!staffRecord) {
     // No staff record = new user going to onboarding
     console.log('[AuthCallback] No staff record - routing to /setup')
     navigate('/setup', { replace: true })
+    return
+  }
+
+  // Check if staff is active - if not, redirect to login with message
+  if (!staffRecord.is_active) {
+    console.log('[AuthCallback] Staff exists but is inactive - redirect to login')
+    await supabase.auth.signOut()
+    navigate('/login', { replace: true })
     return
   }
 

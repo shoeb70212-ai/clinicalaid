@@ -93,16 +93,27 @@ export default function LoginPage({ mode = 'login' }: Props) {
       return
     }
 
-    // Query staff table directly for role
+    // Query staff table directly for role (don't filter by is_active to see if user exists)
     const { data: staffRecord } = await supabase
       .from('staff')
-      .select('role, totp_required')
+      .select('role, is_active, totp_required')
       .eq('user_id', data.user.id)
-      .eq('is_active', true)
       .single()
 
-    if (staffRecord?.role === 'doctor' || staffRecord?.role === 'admin') navigate('/doctor')
-    else if (staffRecord?.role === 'receptionist') navigate('/reception')
+    if (!staffRecord) {
+      navigate('/setup')
+      return
+    }
+
+    if (!staffRecord.is_active) {
+      setError('Your account has been deactivated. Contact your clinic admin.')
+      await supabase.auth.signOut()
+      setLoading(false)
+      return
+    }
+
+    if (staffRecord.role === 'doctor' || staffRecord.role === 'admin') navigate('/doctor')
+    else if (staffRecord.role === 'receptionist') navigate('/reception')
     else navigate('/setup')
 
     setLoading(false)

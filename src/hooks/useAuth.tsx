@@ -28,16 +28,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loadProfile = useCallback(async (session: Session) => {
     // Query staff table directly using user's user_id
     // This is more reliable than relying on JWT enrichment edge function
+    console.log('[useAuth] loadProfile called, user id:', session.user.id)
+
     const { data: staffRecord, error: staffError } = await supabase
       .from('staff')
       .select('id, clinic_id, role, is_active, totp_required')
       .eq('user_id', session.user.id)
-      .eq('is_active', true)
       .single()
 
-    if (staffError || !staffRecord) {
+    console.log('[useAuth] Staff query result:', { 
+      hasData: !!staffRecord, 
+      error: staffError?.message,
+      role: staffRecord?.role,
+      isActive: staffRecord?.is_active
+    })
+
+    if (staffError) {
+      console.error('[useAuth] Staff query error:', staffError.message)
+      // Continue even on error - might be RLS blocking
+    }
+
+    if (!staffRecord) {
       // No staff record = new user going to onboarding
-      console.log('[useAuth] No staff record for user:', session.user.id, staffError?.message)
+      console.log('[useAuth] No staff record - allowing access to app')
+      setState((s) => ({ ...s, loading: false }))
+      return
+    }
+
+    // Check if staff is active
+    if (!staffRecord.is_active) {
+      console.log('[useAuth] Staff record exists but is inactive')
       setState((s) => ({ ...s, loading: false }))
       return
     }
