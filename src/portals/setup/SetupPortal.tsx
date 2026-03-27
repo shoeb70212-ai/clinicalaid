@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { StepAccount }    from './steps/StepAccount'
 import { StepClinic }     from './steps/StepClinic'
@@ -7,6 +7,7 @@ import { StepQR }         from './steps/StepQR'
 import { StepInvite }     from './steps/StepInvite'
 import { StepDone }       from './steps/StepDone'
 import type { ClinicMode } from '../../types'
+import { supabase } from '../../lib/supabase'
 
 export type SetupData = {
   // Step 1
@@ -44,6 +45,25 @@ export default function SetupPortal() {
     clinicMode:   'solo',
     logoFile:     null,
   })
+
+  // If user arrived via Google OAuth, they already have a session.
+  // Skip StepAccount and use their existing auth user ID.
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        const name = session.user.user_metadata?.full_name ?? session.user.user_metadata?.name ?? ''
+        setData((prev) => ({
+          ...prev,
+          staffId:    session.user.id,
+          email:      session.user.email ?? '',
+          doctorName: name,
+        }))
+        // Only skip account step if they came via OAuth (no password)
+        const isOAuth = session.user.app_metadata?.provider !== 'email'
+        if (isOAuth) setStep('clinic')
+      }
+    })
+  }, [])
 
   const update = (patch: Partial<SetupData>) =>
     setData((prev) => ({ ...prev, ...patch }))
