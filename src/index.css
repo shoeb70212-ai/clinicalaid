@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #0891b2;
+  --color-primary-dark: #0e7490;
+  --color-primary-light: #22d3ee;
+  --color-cta: #059669;
+  --color-cta-dark: #047857;
+  --color-background: #ecfeff;
+  --color-text: #164e63;
+  --color-text-muted: #0e7490;
+
+  --font-family-heading: "Figtree", sans-serif;
+  --font-family-body: "Noto Sans", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-family-body);
+  font-size: 16px;
+  color: var(--color-text);
+  background-color: var(--color-background);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-family-heading);
+}
+
+/* Skip link for keyboard navigation */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: var(--color-primary);
+  color: white;
+  padding: 8px;
+  text-decoration: none;
+  z-index: 100;
+}
+.skip-link:focus {
+  top: 0;
+}
+
+/* Focus ring — WCAG AAA */
+:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

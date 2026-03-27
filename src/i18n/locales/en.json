@@ -1,0 +1,137 @@
+{
+  "common": {
+    "loading": "Loading…",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "skip": "Skip",
+    "close": "Close",
+    "error": "Something went wrong. Please try again.",
+    "offline": "Connection lost — queue paused to prevent data conflicts."
+  },
+  "auth": {
+    "signin": "Sign in to ClinicFlow",
+    "email": "Email address",
+    "password": "Password",
+    "signin_btn": "Sign in",
+    "setup_clinic": "Set up your clinic",
+    "mfa_title": "Two-factor authentication",
+    "mfa_prompt": "Enter the 6-digit code from your authenticator app",
+    "mfa_verify": "Verify"
+  },
+  "queue": {
+    "status": {
+      "CHECKED_IN":      "Waiting",
+      "CALLED":          "Called",
+      "IN_CONSULTATION": "In Consultation",
+      "COMPLETED":       "Completed",
+      "NO_SHOW":         "No Show",
+      "SKIPPED":         "Skipped",
+      "CANCELLED":       "Cancelled"
+    },
+    "actions": {
+      "call":       "Call",
+      "complete":   "Mark Complete",
+      "skip":       "Skip / Hold",
+      "no_show":    "No Show",
+      "cancel":     "Cancel",
+      "start":      "Start Consultation",
+      "confirm_id": "Confirm Identity",
+      "mismatch":   "Mismatch"
+    },
+    "token":          "Token",
+    "waiting":        "Waiting",
+    "estimated_wait": "Approx {{minutes}} min wait",
+    "empty":          "No patients in queue"
+  },
+  "patient": {
+    "add":              "Add Patient",
+    "name":             "Patient Name",
+    "mobile":           "Mobile Number",
+    "dob":              "Date of Birth",
+    "gender":           "Gender",
+    "blood_group":      "Blood Group",
+    "allergies":        "Known Allergies",
+    "conditions":       "Chronic Conditions",
+    "new_patient":      "New Patient",
+    "existing":         "Existing Patient",
+    "family_found":     "Multiple patients found. Select the patient in front of you:",
+    "new_family":       "+ New family member",
+    "consent_required": "Patient consent is required before proceeding",
+    "identity_unverified": "Unverified Check-In",
+    "identity_confirm_hint": "Verify patient identity before starting consultation",
+    "anonymized":       "This patient record has been anonymized"
+  },
+  "consultation": {
+    "chief_complaint":   "Chief Complaint",
+    "quick_notes":       "Quick Notes",
+    "vitals":            "Vitals",
+    "bp":                "Blood Pressure",
+    "temperature":       "Temperature (°F)",
+    "spo2":              "SpO2 (%)",
+    "pulse":             "Pulse",
+    "weight":            "Weight (kg)",
+    "draft_restored":    "Unsaved notes from previous session restored.",
+    "history":           "Visit History",
+    "repeat_rx":         "Copy to Notes"
+  },
+  "session": {
+    "open":    "Session Open",
+    "paused":  "Session Paused",
+    "closed":  "Session Closed",
+    "start":   "Open Session",
+    "pause":   "Pause Session",
+    "close":   "Close Session",
+    "zreport": "End of Day Report"
+  },
+  "setup": {
+    "title":           "Set up ClinicFlow",
+    "step_account":    "Your Account",
+    "step_clinic":     "Clinic Details",
+    "step_mode":       "Clinic Mode",
+    "step_qr":         "QR Code",
+    "step_invite":     "Invite Staff",
+    "step_drug_batch": "Drug Library",
+    "step_done":       "You're all set!",
+    "solo_title":      "Just Me",
+    "solo_desc":       "I handle everything myself. No reception staff.",
+    "team_title":      "With a Receptionist",
+    "team_desc":       "I have staff who manage the queue for me."
+  },
+  "drug": {
+    "search_placeholder": "Search drugs…",
+    "add_to_rx":          "Add to Prescription",
+    "dosage":             "Dosage",
+    "duration":           "Duration (days)",
+    "timing":             "Timing",
+    "timing_after_food":  "After food",
+    "timing_before_food": "Before food",
+    "timing_empty":       "Empty stomach",
+    "banned_alert":       "ALERT: This drug was banned by CDSCO on {{date}}. Reason: {{reason}}",
+    "schedule_x_alert":   "Schedule X drugs cannot be prescribed digitally.",
+    "custom_drug":        "Add as Custom Drug",
+    "usually_with":       "Usually prescribed with:"
+  },
+  "display": {
+    "now_serving": "Now Serving",
+    "next":        "Next",
+    "please_wait": "Please wait",
+    "no_session":  "No active session"
+  },
+  "payment": {
+    "amount":      "Consultation Fee",
+    "method":      "Payment Method",
+    "cash":        "Cash",
+    "upi":         "UPI",
+    "waived":      "Waived",
+    "mark_paid":   "Mark as Paid",
+    "z_report":    "Z-Report",
+    "total":       "Total Patients",
+    "completed":   "Completed",
+    "no_shows":    "No Shows",
+    "cash_total":  "Cash Collection",
+    "upi_total":   "UPI Collection"
+  }
+}
