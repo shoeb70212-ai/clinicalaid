@@ -92,7 +92,8 @@ export default function LoginPage({ mode = 'login' }: Props) {
       return
     }
 
-    const role = (data.user as unknown as { app_role?: string })?.app_role
+    const appMetadata = (data.user as { app_metadata?: { app_role?: string } })?.app_metadata
+    const role = appMetadata?.app_role
     if (role === 'doctor' || role === 'admin') navigate('/doctor')
     else if (role === 'receptionist') navigate('/reception')
     else navigate('/setup')

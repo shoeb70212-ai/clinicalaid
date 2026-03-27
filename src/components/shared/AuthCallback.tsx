@@ -12,10 +12,11 @@ import { LoadingSpinner } from './LoadingSpinner'
 async function routeBySession(session: { user: unknown }, navigate: (path: string, opts?: { replace: boolean }) => void) {
   // Refresh to ensure enrichment hook claims are in the JWT
   const { data: refreshed } = await supabase.auth.refreshSession()
-  const user = (refreshed?.session?.user ?? session.user) as Record<string, unknown>
+  const refreshedUser = refreshed?.session?.user ?? session.user as { app_metadata?: Record<string, unknown> }
 
   const { data: mfaData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-  const totpRequired = user.totp_required as boolean | undefined
+  const appMetadata = refreshedUser?.app_metadata ?? {}
+  const totpRequired = appMetadata.totp_required as boolean | undefined
   const needsMfa =
     totpRequired !== false &&
     mfaData?.nextLevel === 'aal2' &&
@@ -23,7 +24,7 @@ async function routeBySession(session: { user: unknown }, navigate: (path: strin
 
   if (needsMfa) { navigate('/verify-mfa', { replace: true }); return }
 
-  const role = user.app_role as string | undefined
+  const role = appMetadata.app_role as string | undefined
   if (role === 'doctor' || role === 'admin') navigate('/doctor', { replace: true })
   else if (role === 'receptionist')          navigate('/reception', { replace: true })
   else                                        navigate('/setup', { replace: true })

@@ -35,15 +35,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       app_role?:      StaffRole  // custom field — 'role' is reserved by Supabase
       totp_required?: boolean
     }
-    // Custom Access Token hook writes into the JWT payload directly (not app_metadata).
-    // Read from session.user directly for custom claims.
-    const jwtClaims  = session.user as unknown as Claims
+    // JWT enrichment hook writes to app_metadata, NOT to session.user directly.
+    // Access token hook response merges claims into session.user.app_metadata.
+    const appMetadata = (session.user as { app_metadata?: Claims }).app_metadata
     const userClaims = session.user.user_metadata as Claims
 
-    const clinicId     = jwtClaims?.clinic_id     ?? userClaims.clinic_id
-    const staffId      = jwtClaims?.staff_id      ?? userClaims.staff_id
-    const role         = (jwtClaims?.app_role     ?? userClaims.app_role) as StaffRole | undefined
-    const totpRequired = jwtClaims?.totp_required ?? userClaims.totp_required ?? true
+    const clinicId     = appMetadata?.clinic_id     ?? userClaims.clinic_id
+    const staffId      = appMetadata?.staff_id      ?? userClaims.staff_id
+    const role         = (appMetadata?.app_role    ?? userClaims.app_role) as StaffRole | undefined
+    const totpRequired = appMetadata?.totp_required ?? userClaims.totp_required ?? true
 
     if (!clinicId || !staffId) {
       setState((s) => ({ ...s, loading: false }))
