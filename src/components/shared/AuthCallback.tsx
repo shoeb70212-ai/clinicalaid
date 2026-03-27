@@ -33,12 +33,14 @@ export default function AuthCallback() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    // First check: session may already exist (PKCE code already exchanged)
+    console.log('[AuthCallback] mounted, url:', window.location.href)
+
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('[AuthCallback] getSession result:', session ? 'HAS SESSION' : 'NO SESSION', session?.user?.id)
       if (session) { routeBySession(session, navigate); return }
 
-      // Second check: wait for SIGNED_IN event (code not yet exchanged)
       const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        console.log('[AuthCallback] onAuthStateChange event:', event, session?.user?.id)
         if (event === 'SIGNED_IN' && session) {
           subscription.unsubscribe()
           routeBySession(session, navigate)
@@ -46,6 +48,7 @@ export default function AuthCallback() {
       })
 
       const timeout = setTimeout(() => {
+        console.log('[AuthCallback] TIMEOUT — no session after 8s, redirecting to login')
         subscription.unsubscribe()
         navigate('/login', { replace: true })
       }, 8000)
