@@ -20,33 +20,47 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    )
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
-    const { data: staffRecord } = await supabase
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('[jwt-enrichment] Missing env vars - check Supabase secrets')
+      return new Response(
+        JSON.stringify({}),
+        { headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey)
+
+    const { data: staffRecord, error: staffError } = await supabase
       .from('staff')
       .select('id, clinic_id, role, is_active, totp_required')
       .eq('user_id', user_id)
       .eq('is_active', true)
       .single()
 
-    // Spread the incoming standard claims, then add our custom fields.
-    // For new users with no staff record, return standard claims unchanged —
-    // AuthCallback will route them to /setup; ProtectedRoute blocks portal access.
+    if (staffError) {
+      console.error('[jwt-enrichment] Staff query error:', staffError.message)
+    }
+
+    if (!staffRecord) {
+      console.log('[jwt-enrichment] No staff record for user:', user_id, '- new user going to onboarding')
+    }
+
+    // Return claims at ROOT level, not wrapped in "claims" object.
+    // Supabase merges these directly into app_metadata.
+    const customClaims = staffRecord ? {
+      clinic_id:     staffRecord.clinic_id,
+      staff_id:      staffRecord.id,
+      app_role:      staffRecord.role,
+      totp_required: staffRecord.totp_required ?? true,
+    } : {}
+
+    console.log('[jwt-enrichment] Returning claims:', Object.keys(customClaims))
+
     return new Response(
-      JSON.stringify({
-        claims: {
-          ...claims,
-          ...(staffRecord ? {
-            clinic_id:     staffRecord.clinic_id,
-            staff_id:      staffRecord.id,
-            app_role:      staffRecord.role,
-            totp_required: staffRecord.totp_required ?? true,
-          } : {}),
-        }
-      }),
+      JSON.stringify(customClaims),
       { headers: { 'Content-Type': 'application/json' } }
     )
   } catch (err) {

@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install:*)",
+      "Bash(code-review-graph install:*)",
+      "Bash(code-review-graph build:*)",
+      "Bash(python \"C:\\\\Users\\\\Junaid\\\\.claude\\\\skills\\\\ui-ux-pro-max\\\\scripts\\\\search.py\" \"healthcare clinic queue management SaaS dashboard professional\" --design-system --persist -p \"ClinicFlow\")",
+      "Bash(python \"C:\\\\Users\\\\Junaid\\\\.claude\\\\skills\\\\ui-ux-pro-max\\\\scripts\\\\search.py\" \"layout responsive form state hooks\" --stack react)",
+      "Bash(python -c \"import json; data=json.load\\(open\\(r''C:\\\\Users\\\\Junaid\\\\.claude\\\\projects\\\\e--Project-Clinic\\\\166087c3-dd6f-4821-a1cb-473c191bf768\\\\tool-results\\\\toolu_01Up1qTpu7s7hAqFLVnruhXk.json''\\)\\); print\\(data[0][''text'']\\)\")",
+      "Bash(python -c \"import json; data=json.load\\(open\\(r''C:\\\\Users\\\\Junaid\\\\.claude\\\\projects\\\\e--Project-Clinic\\\\166087c3-dd6f-4821-a1cb-473c191bf768\\\\tool-results\\\\toolu_01Up1qTpu7s7hAqFLVnruhXk.json'', encoding=''utf-8''\\)\\); print\\(data[0][''text'']\\)\")",
+      "Bash(find /e/Project/Clinic/src -type f \\\\\\(-name *.ts -o -name *.tsx \\\\\\))",
+      "Bash(npx tsc:*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173)",
+      "Bash(npm run:*)",
+      "Bash(npx plugins:*)",
+      "Read(//c/Users/Junaid/.cache/plugins/github.com-vercel-vercel-plugin/**)",
+      "Read(//c/Users/Junaid/.claude/**)",
+      "Bash(vercel --version)",
+      "Bash(npm i:*)",
+      "Bash(vercel whoami:*)",
+      "Bash(vercel link:*)",
+      "Bash(vercel deploy:*)",
+      "Bash(supabase --version)",
+      "Bash(npm install:*)",
+      "Bash(curl -s -X POST https://pctrinixsnmclhjemjqv.supabase.co/functions/v1/jwt-enrichment -H \"Authorization: Bearer sb_publishable_lzDXA5_A7caNFpndrebriw_rqMLQSvp\" -H \"Content-Type: application/json\" -d '{\"\"user_id\"\": \"\"00000000-0000-0000-0000-000000000000\"\"}')",
+      "Bash(curl -s https://pctrinixsnmclhjemjqv.supabase.co/functions/v1/ -H \"Authorization: Bearer sb_publishable_lzDXA5_A7caNFpndrebriw_rqMLQSvp\")",
+      "Bash(curl -s -X POST https://pctrinixsnmclhjemjqv.supabase.co/functions/v1/swift-processor -H \"Authorization: Bearer sb_publishable_lzDXA5_A7caNFpndrebriw_rqMLQSvp\" -H \"Content-Type: application/json\" -d '{\"\"user_id\"\": \"\"00000000-0000-0000-0000-000000000000\"\"}')",
+      "Bash(node -e \"const s = require\\(''crypto''\\).randomBytes\\(32\\).toString\\(''base64''\\); console.log\\(''v1,whsec_'' + s\\)\")",
+      "Bash(vercel --prod)",
+      "Bash(vercel alias:*)",
+      "Bash(vercel env:*)"
+    ],
+    "additionalDirectories": [
+      "e:\\Project\\Clinic"
+    ]
+  }
+}

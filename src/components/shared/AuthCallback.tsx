@@ -10,12 +10,21 @@ import { LoadingSpinner } from './LoadingSpinner'
  * Route: /auth/callback
  */
 async function routeBySession(session: { user: unknown }, navigate: (path: string, opts?: { replace: boolean }) => void) {
+  console.log('[AuthCallback] routeBySession started')
+
   // Refresh to ensure enrichment hook claims are in the JWT
-  const { data: refreshed } = await supabase.auth.refreshSession()
+  const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession()
+
+  if (refreshError) {
+    console.error('[AuthCallback] Refresh error:', refreshError)
+  }
+
   const refreshedUser = refreshed?.session?.user ?? session.user as { app_metadata?: Record<string, unknown> }
+  const appMetadata = refreshedUser?.app_metadata ?? {}
+
+  console.log('[AuthCallback] app_metadata:', JSON.stringify(appMetadata))
 
   const { data: mfaData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-  const appMetadata = refreshedUser?.app_metadata ?? {}
   const totpRequired = appMetadata.totp_required as boolean | undefined
   const needsMfa =
     totpRequired !== false &&
@@ -25,6 +34,8 @@ async function routeBySession(session: { user: unknown }, navigate: (path: strin
   if (needsMfa) { navigate('/verify-mfa', { replace: true }); return }
 
   const role = appMetadata.app_role as string | undefined
+  console.log('[AuthCallback] Role:', role)
+
   if (role === 'doctor' || role === 'admin') navigate('/doctor', { replace: true })
   else if (role === 'receptionist')          navigate('/reception', { replace: true })
   else                                        navigate('/setup', { replace: true })
