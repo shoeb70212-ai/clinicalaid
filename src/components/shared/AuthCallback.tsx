@@ -9,36 +9,50 @@ import { LoadingSpinner } from './LoadingSpinner'
  * We exchange it for a session, then route by role — same logic as LoginPage.
  * Route: /auth/callback
  */
-async function routeBySession(session: { user: unknown }, navigate: (path: string, opts?: { replace: boolean }) => void) {
-  console.log('[AuthCallback] routeBySession started')
+async function routeBySession(session: { user: { id: string } }, navigate: (path: string, opts?: { replace: boolean }) => void) {
+  console.log('[AuthCallback] routeBySession started, user:', session.user.id)
 
-  // Refresh to ensure enrichment hook claims are in the JWT
-  const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession()
+  // Query staff table directly using the user's ID
+  const { data: staffRecord, error: staffError } = await supabase
+    .from('staff')
+    .select('id, clinic_id, role, is_active, totp_required')
+    .eq('user_id', session.user.id)
+    .eq('is_active', true)
+    .single()
 
-  if (refreshError) {
-    console.error('[AuthCallback] Refresh error:', refreshError)
+  if (staffError) {
+    console.error('[AuthCallback] Staff query error:', staffError.message)
   }
 
-  const refreshedUser = refreshed?.session?.user ?? session.user as { app_metadata?: Record<string, unknown> }
-  const appMetadata = refreshedUser?.app_metadata ?? {}
+  if (!staffRecord) {
+    // No staff record = new user going to onboarding
+    console.log('[AuthCallback] No staff record - routing to /setup')
+    navigate('/setup', { replace: true })
+    return
+  }
 
-  console.log('[AuthCallback] app_metadata:', JSON.stringify(appMetadata))
+  console.log('[AuthCallback] Staff found, role:', staffRecord.role)
 
+  // Check MFA requirement
   const { data: mfaData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-  const totpRequired = appMetadata.totp_required as boolean | undefined
   const needsMfa =
-    totpRequired !== false &&
+    staffRecord.totp_required !== false &&
     mfaData?.nextLevel === 'aal2' &&
     mfaData?.currentLevel !== 'aal2'
 
-  if (needsMfa) { navigate('/verify-mfa', { replace: true }); return }
+  if (needsMfa) { 
+    navigate('/verify-mfa', { replace: true }); 
+    return 
+  }
 
-  const role = appMetadata.app_role as string | undefined
-  console.log('[AuthCallback] Role:', role)
-
-  if (role === 'doctor' || role === 'admin') navigate('/doctor', { replace: true })
-  else if (role === 'receptionist')          navigate('/reception', { replace: true })
-  else                                        navigate('/setup', { replace: true })
+  // Route by role
+  if (staffRecord.role === 'doctor' || staffRecord.role === 'admin') {
+    navigate('/doctor', { replace: true })
+  } else if (staffRecord.role === 'receptionist') {
+    navigate('/reception', { replace: true })
+  } else {
+    navigate('/setup', { replace: true })
+  }
 }
 
 export default function AuthCallback() {

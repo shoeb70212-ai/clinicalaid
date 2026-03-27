@@ -86,16 +86,23 @@ export default function LoginPage({ mode = 'login' }: Props) {
       return
     }
 
+    // Check MFA
     const { data: mfaData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
     if (mfaData?.nextLevel === 'aal2' && mfaData?.currentLevel !== 'aal2') {
       navigate('/verify-mfa')
       return
     }
 
-    const appMetadata = (data.user as { app_metadata?: { app_role?: string } })?.app_metadata
-    const role = appMetadata?.app_role
-    if (role === 'doctor' || role === 'admin') navigate('/doctor')
-    else if (role === 'receptionist') navigate('/reception')
+    // Query staff table directly for role
+    const { data: staffRecord } = await supabase
+      .from('staff')
+      .select('role, totp_required')
+      .eq('user_id', data.user.id)
+      .eq('is_active', true)
+      .single()
+
+    if (staffRecord?.role === 'doctor' || staffRecord?.role === 'admin') navigate('/doctor')
+    else if (staffRecord?.role === 'receptionist') navigate('/reception')
     else navigate('/setup')
 
     setLoading(false)

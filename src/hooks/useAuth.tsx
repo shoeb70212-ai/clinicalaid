@@ -26,47 +26,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   })
 
   const loadProfile = useCallback(async (session: Session) => {
-    // app_metadata is server-only (JWT enrichment Edge Function writes here).
-    // user_metadata is user-writable — NEVER trust it for security-sensitive claims.
-    // Always prefer app_metadata; fall back to user_metadata only as last resort.
-    type Claims = {
-      clinic_id?:     string
-      staff_id?:      string
-      app_role?:      StaffRole  // custom field — 'role' is reserved by Supabase
-      totp_required?: boolean
-    }
-    // JWT enrichment hook writes to app_metadata, NOT to session.user directly.
-    // Access token hook response merges claims into session.user.app_metadata.
-    const appMetadata = (session.user as { app_metadata?: Claims }).app_metadata
-    const userClaims = session.user.user_metadata as Claims
+    // Query staff table directly using user's user_id
+    // This is more reliable than relying on JWT enrichment edge function
+    const { data: staffRecord, error: staffError } = await supabase
+      .from('staff')
+      .select('id, clinic_id, role, is_active, totp_required')
+      .eq('user_id', session.user.id)
+      .eq('is_active', true)
+      .single()
 
-    const clinicId     = appMetadata?.clinic_id     ?? userClaims.clinic_id
-    const staffId      = appMetadata?.staff_id      ?? userClaims.staff_id
-    const role         = (appMetadata?.app_role    ?? userClaims.app_role) as StaffRole | undefined
-    const totpRequired = appMetadata?.totp_required ?? userClaims.totp_required ?? true
-
-    if (!clinicId || !staffId) {
+    if (staffError || !staffRecord) {
+      // No staff record = new user going to onboarding
+      console.log('[useAuth] No staff record for user:', session.user.id, staffError?.message)
       setState((s) => ({ ...s, loading: false }))
       return
     }
 
-    // Run all three in parallel — saves ~50-100ms on every login/tab focus
-    const [staffRes, clinicRes, mfaLevel] = await Promise.all([
-      supabase.from('staff').select('*').eq('id', staffId).single(),
-      supabase.from('clinics').select('*').eq('id', clinicId).single(),
-      supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
-    ])
+    const clinicId = staffRecord.clinic_id
+    const staffId = staffRecord.id
+    const role = staffRecord.role as StaffRole
+    const totpRequired = staffRecord.totp_required ?? true
 
-    const mfaVerified = mfaLevel.data?.currentLevel === 'aal2'
+    // Get clinic details
+    const { data: clinicRes } = await supabase
+      .from('clinics')
+      .select('*')
+      .eq('id', clinicId)
+      .single()
+
+    const { data: mfaLevel } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    const mfaVerified = mfaLevel?.currentLevel === 'aal2'
 
     setState({
       session,
-      staff:        staffRes.data as Staff | null,
-      clinic:       clinicRes.data as Clinic | null,
-      role:         role ?? null,
+      staff: staffRecord as Staff,
+      clinic: clinicRes as Clinic | null,
+      role,
       totpRequired,
       mfaVerified,
-      loading:      false,
+      loading: false,
     })
   }, [])
 
