@@ -43,7 +43,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const clinicId = staffRecord.clinic_id
-    const staffId = staffRecord.id
     const role = staffRecord.role as StaffRole
     const totpRequired = staffRecord.totp_required ?? true
 
