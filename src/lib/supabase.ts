@@ -19,5 +19,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnon, {
     autoRefreshToken:   true,
     persistSession:     true,
     detectSessionInUrl: true,
+    flowType:           'implicit',
   },
 })
