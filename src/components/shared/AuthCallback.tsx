@@ -9,59 +9,49 @@ import { LoadingSpinner } from './LoadingSpinner'
  * We exchange it for a session, then route by role — same logic as LoginPage.
  * Route: /auth/callback
  */
+async function routeBySession(session: { user: unknown }, navigate: (path: string, opts?: { replace: boolean }) => void) {
+  // Refresh to ensure enrichment hook claims are in the JWT
+  const { data: refreshed } = await supabase.auth.refreshSession()
+  const user = (refreshed?.session?.user ?? session.user) as Record<string, unknown>
+
+  const { data: mfaData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+  const totpRequired = user.totp_required as boolean | undefined
+  const needsMfa =
+    totpRequired !== false &&
+    mfaData?.nextLevel === 'aal2' &&
+    mfaData?.currentLevel !== 'aal2'
+
+  if (needsMfa) { navigate('/verify-mfa', { replace: true }); return }
+
+  const role = user.app_role as string | undefined
+  if (role === 'doctor' || role === 'admin') navigate('/doctor', { replace: true })
+  else if (role === 'receptionist')          navigate('/reception', { replace: true })
+  else                                        navigate('/setup', { replace: true })
+}
+
 export default function AuthCallback() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    // detectSessionInUrl:true in supabase.ts means the client automatically
-    // processes the ?code= or #access_token= from the URL on init.
-    // We just need to wait for SIGNED_IN to fire, then route.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event !== 'SIGNED_IN' || !session) return
-      subscription.unsubscribe()
+    // First check: session may already exist (PKCE code already exchanged)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) { routeBySession(session, navigate); return }
 
-      let s = session
+      // Second check: wait for SIGNED_IN event (code not yet exchanged)
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          subscription.unsubscribe()
+          routeBySession(session, navigate)
+        }
+      })
 
-      // Refresh once to ensure JWT enrichment claims are present
-      if (!s.user.app_metadata?.role) {
-        const { data: refreshed } = await supabase.auth.refreshSession()
-        if (refreshed?.session) s = refreshed.session
-      }
+      const timeout = setTimeout(() => {
+        subscription.unsubscribe()
+        navigate('/login', { replace: true })
+      }, 8000)
 
-      // Custom claims are injected directly into the JWT payload by the hook
-      const jwtClaims = s.user as unknown as { app_role?: string; totp_required?: boolean }
-
-      const { data: mfaData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-      const needsMfa =
-        jwtClaims.totp_required !== false &&
-        mfaData?.nextLevel === 'aal2' &&
-        mfaData?.currentLevel !== 'aal2'
-
-      if (needsMfa) {
-        navigate('/verify-mfa', { replace: true })
-        return
-      }
-
-      const role = jwtClaims.app_role
-      if (role === 'doctor' || role === 'admin') {
-        navigate('/doctor', { replace: true })
-      } else if (role === 'receptionist') {
-        navigate('/reception', { replace: true })
-      } else {
-        navigate('/setup', { replace: true })
-      }
+      return () => { clearTimeout(timeout); subscription.unsubscribe() }
     })
-
-    // Timeout: if no SIGNED_IN fires in 8s, send back to login
-    const timeout = setTimeout(() => {
-      subscription.unsubscribe()
-      navigate('/login', { replace: true })
-    }, 8000)
-
-    return () => {
-      clearTimeout(timeout)
-      subscription.unsubscribe()
-    }
   }, [navigate])
 
   return <LoadingSpinner fullScreen />
