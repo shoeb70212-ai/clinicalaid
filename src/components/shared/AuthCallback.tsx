@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { LoadingSpinner } from './LoadingSpinner'
@@ -11,13 +11,8 @@ import { LoadingSpinner } from './LoadingSpinner'
  */
 export default function AuthCallback() {
   const navigate = useNavigate()
-  const processed = useRef(false)
 
   useEffect(() => {
-    // Guard against double-firing in React StrictMode
-    if (processed.current) return
-    processed.current = true
-
     // detectSessionInUrl:true in supabase.ts means the client automatically
     // processes the ?code= or #access_token= from the URL on init.
     // We just need to wait for SIGNED_IN to fire, then route.
