@@ -33,11 +33,14 @@ export default function ReceptionPortal() {
   const { session, loading: sessionLoading, refetch: refetchSession } = useSession(null, clinic?.id ?? null)
   const { queue,   loading: queueLoading,   refetch: refetchQueue   } = useQueue(session?.id ?? null)
 
+  type SidePanel = 'appointments' | 'recall' | 'analytics' | null
+  const [activePanel,      setActivePanel]      = useState<SidePanel>(null)
   const [showAddPatient,   setShowAddPatient]   = useState(false)
-  const [showAppointments, setShowAppointments] = useState(false)
-  const [showRecall,       setShowRecall]       = useState(false)
-  const [showAnalytics,    setShowAnalytics]    = useState(false)
   const [zReportSessionId, setZReportSessionId] = useState<string | null>(null)
+
+  const showAppointments = activePanel === 'appointments'
+  const showRecall       = activePanel === 'recall'
+  const showAnalytics    = activePanel === 'analytics'
   // Capture session ID before close so Z-Report can be shown after session disappears
   const closingSessionIdRef = useRef<string | null>(null)
 
@@ -84,19 +87,21 @@ export default function ReceptionPortal() {
             className="cursor-pointer rounded-lg p-2 text-[#0e7490] transition-colors hover:bg-[#ecfeff]">
             <RefreshCw className="h-4 w-4" aria-hidden="true" />
           </button>
-          <button onClick={() => { setShowAppointments((v) => !v); setShowRecall(false); setShowAnalytics(false) }}
+          <button onClick={() => setActivePanel(showAppointments ? null : 'appointments')}
             aria-label="Appointments"
             aria-pressed={showAppointments}
             className={`cursor-pointer rounded-lg p-2 transition-colors ${showAppointments ? 'bg-[#e0f4f4] text-[#006a6a]' : 'text-[#0e7490] hover:bg-[#ecfeff]'}`}>
             <Calendar className="h-4 w-4" aria-hidden="true" />
           </button>
-          <button onClick={() => { setShowRecall((v) => !v); setShowAppointments(false); setShowAnalytics(false) }}
-            aria-label="Patient recall"
-            aria-pressed={showRecall}
-            className={`cursor-pointer rounded-lg p-2 transition-colors ${showRecall ? 'bg-[#fef9f0] text-[#b45309]' : 'text-[#0e7490] hover:bg-[#ecfeff]'}`}>
-            <Bell className="h-4 w-4" aria-hidden="true" />
-          </button>
-          <button onClick={() => { setShowAnalytics((v) => !v); setShowAppointments(false); setShowRecall(false) }}
+          {clinic?.config?.recall_engine_enabled && (
+            <button onClick={() => setActivePanel(showRecall ? null : 'recall')}
+              aria-label="Patient recall"
+              aria-pressed={showRecall}
+              className={`cursor-pointer rounded-lg p-2 transition-colors ${showRecall ? 'bg-[#fef9f0] text-[#b45309]' : 'text-[#0e7490] hover:bg-[#ecfeff]'}`}>
+              <Bell className="h-4 w-4" aria-hidden="true" />
+            </button>
+          )}
+          <button onClick={() => setActivePanel(showAnalytics ? null : 'analytics')}
             aria-label="Analytics"
             aria-pressed={showAnalytics}
             className={`cursor-pointer rounded-lg p-2 transition-colors ${showAnalytics ? 'bg-[#e0f4f4] text-[#006a6a]' : 'text-[#0e7490] hover:bg-[#ecfeff]'}`}>
@@ -188,7 +193,7 @@ export default function ReceptionPortal() {
         )}
 
         {/* Recall panel — full-screen overlay on mobile, side panel on desktop */}
-        {showRecall && (
+        {showRecall && clinic?.config?.recall_engine_enabled && (
           <div className="fixed inset-0 z-30 overflow-y-auto bg-white md:relative md:inset-auto md:z-auto md:flex md:w-2/5 md:flex-col md:border-l md:border-gray-200">
             <RecallPanel
               clinicId={clinic?.id ?? ''}

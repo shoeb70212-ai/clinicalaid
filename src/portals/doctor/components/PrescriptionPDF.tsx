@@ -1,6 +1,7 @@
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
 import type { PrescriptionItem } from '../../../types'
 import { calcAge } from '../../../lib/utils'
+import { TIMING_LABEL } from '../../../lib/constants'
 
 interface Props {
   patientName:    string
@@ -17,12 +18,6 @@ interface Props {
   date:           string
 }
 
-const TIMING_LABEL: Record<string, string> = {
-  after_food:    'After food',
-  before_food:   'Before food',
-  empty_stomach: 'Empty stomach',
-  sos:           'SOS',
-}
 
 const s = StyleSheet.create({
   page:        { fontFamily: 'Helvetica', fontSize: 10, padding: 40, color: '#2a3437' },
