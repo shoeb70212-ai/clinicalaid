@@ -50,61 +50,34 @@ export function StepClinic({ data, update, onNext }: Props) {
     setLoading(true)
     setError(null)
 
-    // Get session first — must be done before any async DB calls
-    const { data: { session: currentSession } } = await supabase.auth.getSession()
-    const userId = currentSession?.user?.id
-    if (!userId) {
-      setError('Session lost — please sign in again.')
+    // Use SECURITY DEFINER RPC to create clinic + staff atomically.
+    // This bypasses RLS (JWT has no clinic_id during onboarding).
+    const { data: result, error: rpcError } = await supabase.rpc('create_onboarding_clinic', {
+      p_clinic_name:   data.clinicName,
+      p_address:       data.address,
+      p_phone:         data.phone ?? '',
+      p_primary_color: data.primaryColor ?? '#0891b2',
+      p_pin_code:      data.pinCode ?? null,
+      p_state:         data.state ?? null,
+      p_doctor_name:   data.doctorName ?? '',
+      p_email:         data.email ?? '',
+      p_reg_number:    data.regNumber ?? '',
+      p_qualification: data.qualification ?? '',
+      p_specialty:     data.specialty ?? '',
+    })
+
+    if (rpcError || !result) {
+      setError(rpcError?.message ?? 'Failed to create clinic. Please try again.')
       setLoading(false)
       return
     }
 
-    // Create clinic row
-    const { data: clinicRow, error: clinicError } = await supabase
-      .from('clinics')
-      .insert({
-        name:          data.clinicName,
-        address:       data.address,
-        phone:         data.phone,
-        primary_color: data.primaryColor ?? '#0891b2',
-        clinic_pin_code: data.pinCode,
-      })
-      .select()
-      .single()
-
-    if (clinicError) {
-      setError(clinicError.message)
-      setLoading(false)
-      return
-    }
-
-    // Create staff record for the doctor
-    const { error: staffError } = await supabase
-      .from('staff')
-      .insert({
-        clinic_id:     clinicRow.id,
-        user_id:       userId,
-        name:          data.doctorName ?? '',
-        full_name:     data.doctorName ?? '',
-        email:         data.email ?? '',
-        role:          'doctor',
-        is_active:     true,
-        totp_required: false,
-        reg_number:    data.regNumber ?? '',
-        qualification: data.qualification ?? '',
-        specialty:     data.specialty ?? '',
-      })
-
-    if (staffError) {
-      setError(`Failed to create staff record: ${staffError.message}`)
-      setLoading(false)
-      return
-    }
+    const clinicId = result.clinic_id as string
 
     // Upload logo if provided
-    if (data.logoFile && clinicRow) {
+    if (data.logoFile && clinicId) {
       const ext  = data.logoFile.type.split('/')[1]
-      const path = `${clinicRow.id}/logos/logo.${ext}`
+      const path = `${clinicId}/logos/logo.${ext}`
       const { error: uploadError } = await supabase.storage
         .from('clinic-docs')
         .upload(path, data.logoFile, { upsert: true })
@@ -113,10 +86,13 @@ export function StepClinic({ data, update, onNext }: Props) {
         setLoading(false)
         return
       }
-      await supabase.from('clinics').update({ logo_url: path }).eq('id', clinicRow.id)
+      await supabase.from('clinics').update({ logo_url: path }).eq('id', clinicId)
     }
 
-    update({ clinicId: clinicRow.id })
+    // Refresh session so jwt-enrichment hook picks up the new staff record
+    await supabase.auth.refreshSession()
+
+    update({ clinicId })
     setLoading(false)
     onNext()
   }

@@ -73,7 +73,9 @@ export default function SetupPortal() {
     if (idx < STEPS.length - 1) setStep(STEPS[idx + 1])
   }
 
-  const goToApp = () => {
+  const goToApp = async () => {
+    // Refresh JWT so jwt-enrichment hook includes clinic_id before navigating
+    await supabase.auth.refreshSession()
     if (data.clinicMode === 'solo') navigate('/doctor')
     else navigate('/reception')
   }
