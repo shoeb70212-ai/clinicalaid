@@ -42,6 +42,8 @@ export function AppointmentPanel({ clinicId, doctorId, online }: Props) {
   const [notes,        setNotes]          = useState('')
   const [bookError,    setBookError]      = useState<string | null>(null)
   const [booking,      setBooking]        = useState(false)
+  const [cancelConfirm, setCancelConfirm] = useState<string | null>(null)
+  const [cancelError,   setCancelError]   = useState<string | null>(null)
 
   const fetchAppointments = useCallback(async () => {
     setLoading(true)
@@ -81,6 +83,11 @@ export function AppointmentPanel({ clinicId, doctorId, online }: Props) {
     setBookError(null)
 
     const scheduledAt = new Date(`${selectedDate}T${time}:00`)
+    if (scheduledAt <= new Date()) {
+      setBookError('Cannot book an appointment in the past.')
+      setBooking(false)
+      return
+    }
 
     const { error } = await supabase.rpc('book_appointment', {
       p_clinic_id:        clinicId,
@@ -112,11 +119,17 @@ export function AppointmentPanel({ clinicId, doctorId, online }: Props) {
   }
 
   async function handleCancel(id: string) {
-    await supabase.rpc('cancel_appointment', {
+    setCancelError(null)
+    const { error } = await supabase.rpc('cancel_appointment', {
       p_appointment_id: id,
       p_clinic_id:      clinicId,
     })
-    fetchAppointments()
+    setCancelConfirm(null)
+    if (error) {
+      setCancelError(error.message)
+    } else {
+      fetchAppointments()
+    }
   }
 
   function shiftDate(days: number) {
@@ -269,6 +282,14 @@ export function AppointmentPanel({ clinicId, doctorId, online }: Props) {
         </div>
       )}
 
+      {/* Cancel error */}
+      {cancelError && (
+        <div className="mx-4 mt-2 rounded-lg px-3 py-2 text-xs" style={{ backgroundColor: '#fef2f2', color: '#991b1b' }}>
+          {cancelError}
+          <button type="button" onClick={() => setCancelError(null)} className="ml-2 font-semibold">Dismiss</button>
+        </div>
+      )}
+
       {/* Appointment list */}
       <div className="flex-1 overflow-y-auto p-4">
         {loading ? (
@@ -321,13 +342,29 @@ export function AppointmentPanel({ clinicId, doctorId, online }: Props) {
                     )}
                   </div>
 
-                  {/* Cancel button */}
+                  {/* Cancel button / confirm */}
                   {appt.status === 'booked' && online && (
-                    <button type="button" onClick={() => handleCancel(appt.id)}
-                      className="shrink-0 cursor-pointer rounded-lg p-1.5 transition-colors hover:bg-red-50"
-                      aria-label="Cancel appointment">
-                      <X className="h-3.5 w-3.5" style={{ color: '#dc2626' }} />
-                    </button>
+                    cancelConfirm === appt.id ? (
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <span className="text-[10px] text-red-600">Cancel?</span>
+                        <button type="button" onClick={() => handleCancel(appt.id)}
+                          className="cursor-pointer rounded-lg px-2 py-1 text-[10px] font-bold text-white"
+                          style={{ backgroundColor: '#dc2626' }}>
+                          Yes
+                        </button>
+                        <button type="button" onClick={() => setCancelConfirm(null)}
+                          className="cursor-pointer rounded-lg px-2 py-1 text-[10px] font-semibold"
+                          style={{ color: '#566164' }}>
+                          No
+                        </button>
+                      </div>
+                    ) : (
+                      <button type="button" onClick={() => setCancelConfirm(appt.id)}
+                        className="shrink-0 cursor-pointer rounded-lg p-1.5 transition-colors hover:bg-red-50"
+                        aria-label="Cancel appointment">
+                        <X className="h-3.5 w-3.5" style={{ color: '#dc2626' }} />
+                      </button>
+                    )
                   )}
                 </div>
               )

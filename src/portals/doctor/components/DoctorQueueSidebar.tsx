@@ -2,9 +2,10 @@ import { AlertTriangle, UserCheck } from 'lucide-react'
 import type { QueueEntryWithPatient } from '../../../types'
 
 interface Props {
-  queue:    QueueEntryWithPatient[]
-  activeId: string | null
-  onSelect: (entry: QueueEntryWithPatient) => void
+  queue:       QueueEntryWithPatient[]
+  activeId:    string | null
+  onSelect:    (entry: QueueEntryWithPatient) => void
+  avgSeconds?: number   // from clinic.config.avg_consultation_seconds
 }
 
 const STATUS_LABEL: Record<string, { label: string; color: string; bg: string }> = {
@@ -28,7 +29,13 @@ function avatarStyle(isActive: boolean, isInProgress: boolean) {
   return               { bg: '#f0f4f6',                color: '#006a6a' }
 }
 
-export function DoctorQueueSidebar({ queue, activeId, onSelect }: Props) {
+function waitLabel(index: number, avgSeconds: number): string {
+  if (index === 0) return 'Now'
+  const mins = Math.round((index * avgSeconds) / 60)
+  return `~${mins} min`
+}
+
+export function DoctorQueueSidebar({ queue, activeId, onSelect, avgSeconds = 600 }: Props) {
   const visible = queue.filter((e) => !['COMPLETED', 'CANCELLED'].includes(e.status))
   const waiting = visible.filter((e) => e.status === 'CHECKED_IN').length
 
@@ -56,10 +63,11 @@ export function DoctorQueueSidebar({ queue, activeId, onSelect }: Props) {
           </div>
         )}
 
-        {visible.map((entry) => {
+        {visible.map((entry, idx) => {
           const isActive = activeId === entry.id
           const statusInfo = STATUS_LABEL[entry.status] ?? STATUS_LABEL.CHECKED_IN
           const isInProgress = entry.status === 'IN_CONSULTATION'
+          const wait = waitLabel(idx, avgSeconds)
 
           const av = avatarStyle(isActive, isInProgress)
           return (
@@ -114,14 +122,22 @@ export function DoctorQueueSidebar({ queue, activeId, onSelect }: Props) {
                   >
                     {entry.patient.name}
                   </p>
-                  {entry.patient.mobile && (
-                    <p
-                      className="mt-0.5 text-xs truncate"
-                      style={{ color: isActive ? 'rgba(255,255,255,0.7)' : 'var(--color-muted)' }}
+                  <div className="mt-0.5 flex items-center justify-between gap-1">
+                    {entry.patient.mobile && (
+                      <p
+                        className="truncate text-xs"
+                        style={{ color: isActive ? 'rgba(255,255,255,0.7)' : 'var(--color-muted)' }}
+                      >
+                        {entry.patient.mobile}
+                      </p>
+                    )}
+                    <span
+                      className="shrink-0 text-[10px] tabular-nums font-medium"
+                      style={{ color: isActive ? 'rgba(255,255,255,0.6)' : 'var(--color-faded, #a9b4b7)' }}
                     >
-                      {entry.patient.mobile}
-                    </p>
-                  )}
+                      {wait}
+                    </span>
+                  </div>
                 </div>
               </div>
             </button>

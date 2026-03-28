@@ -8,7 +8,13 @@
  */
 export function calcAge(dob: string | null): number | null {
   if (!dob) return null
-  const ms = Date.now() - new Date(dob).getTime()
-  if (isNaN(ms)) return null
-  return Math.floor(ms / (365.25 * 24 * 60 * 60 * 1000))
+  const birth = new Date(dob)
+  if (isNaN(birth.getTime())) return null
+  const today = new Date()
+  let age = today.getFullYear() - birth.getFullYear()
+  const monthDiff = today.getMonth() - birth.getMonth()
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--
+  }
+  return age
 }

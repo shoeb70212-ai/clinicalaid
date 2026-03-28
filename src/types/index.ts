@@ -41,6 +41,7 @@ export interface ClinicConfig {
   consent_version:            string
   avg_consultation_seconds:   number
   languages:                  string[]
+  currency?:                  string   // e.g. '₹', '$', '€' — defaults to '₹'
 }
 
 export interface Staff {
@@ -330,6 +331,16 @@ export interface PrescriptionItem {
   timing?:       string    // 'after_food' | 'before_food' | 'empty_stomach' | 'sos'
 }
 
+/** Doctor-saved prescription template for rapid Rx reuse */
+export interface RxTemplate {
+  id:         string
+  clinic_id:  string
+  doctor_id:  string
+  name:       string
+  items:      PrescriptionItem[]
+  created_at: string
+}
+
 /** Prescription row from the prescriptions table */
 export interface Prescription {
   id:            string
@@ -397,5 +408,7 @@ export interface ConsultationDraft {
     weight:        string
   }
   prescriptionItems?: PrescriptionItem[]
+  icd10Codes?:     string[]   // ICD-10 diagnosis codes selected by doctor
+  labFindings?:    string     // Key lab values entered/dictated by doctor
   savedAt: number
 }

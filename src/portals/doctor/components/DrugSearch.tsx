@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, type ChangeEvent } from 'react'
 import { Search, AlertTriangle, Plus, X } from 'lucide-react'
 import { searchDrugs, checkBannedDrug, recordDrugUsage } from '../../../lib/drugSearch'
+import { TIMING_LABEL } from '../../../lib/constants'
 import type { DrugSearchResult, PrescriptionItem } from '../../../types'
 
 interface Props {
@@ -254,10 +255,9 @@ export function DrugSearch({ doctorId, clinicId, online, onAddDrug }: Props) {
                 className="w-full cursor-pointer rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm text-[#164e63] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#006a6a]"
               >
                 <option value="">—</option>
-                <option value="after_food">After food</option>
-                <option value="before_food">Before food</option>
-                <option value="empty_stomach">Empty stomach</option>
-                <option value="sos">SOS</option>
+                {Object.entries(TIMING_LABEL).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
               </select>
             </div>
           </div>

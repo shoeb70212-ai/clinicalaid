@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { FileText, Printer, X } from 'lucide-react'
+import { FileText, Printer, Download, X } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import type { ZReport as ZReportType } from '../../../types'
 
@@ -16,28 +16,41 @@ interface RawReport {
   upi_paise:      number | null
 }
 
+interface QueueRow {
+  token_number: number | null
+  status:       string
+  created_at:   string
+  patient:      { name: string } | null
+}
+
 /**
  * End-of-day Z-Report modal.
  * Shown after session is closed from SessionControls.
  */
 export function ZReport({ sessionId, onClose }: Props) {
-  const [report,  setReport]  = useState<ZReportType | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error,   setError]   = useState<string | null>(null)
+  const [report,    setReport]    = useState<ZReportType | null>(null)
+  const [queueRows, setQueueRows] = useState<QueueRow[]>([])
+  const [loading,   setLoading]   = useState(true)
+  const [error,     setError]     = useState<string | null>(null)
 
   useEffect(() => {
-    async function fetchReport() {
-      const { data, error: err } = await supabase.rpc('get_session_z_report', {
-        p_session_id: sessionId,
-      })
+    async function fetchAll() {
+      const [reportResult, queueResult] = await Promise.all([
+        supabase.rpc('get_session_z_report', { p_session_id: sessionId }),
+        supabase
+          .from('queue_entries')
+          .select('token_number, status, created_at, patient:patients(name)')
+          .eq('session_id', sessionId)
+          .order('token_number', { ascending: true }),
+      ])
 
-      if (err) {
-        setError(err.message)
+      if (reportResult.error) {
+        setError(reportResult.error.message)
         setLoading(false)
         return
       }
 
-      const raw = data as RawReport
+      const raw = reportResult.data as RawReport
       setReport({
         session_id:     sessionId,
         total_patients: raw.total_patients ?? 0,
@@ -46,14 +59,49 @@ export function ZReport({ sessionId, onClose }: Props) {
         cash_paise:     raw.cash_paise     ?? 0,
         upi_paise:      raw.upi_paise      ?? 0,
       })
+
+      if (queueResult.error) {
+        // Don't abort — still show summary totals, but note the CSV will be empty
+        setError(`Summary loaded but queue details unavailable: ${queueResult.error.message}`)
+      } else {
+        setQueueRows((queueResult.data ?? []) as QueueRow[])
+      }
+
       setLoading(false)
     }
 
-    fetchReport()
+    fetchAll()
   }, [sessionId])
 
   function formatRupees(paise: number) {
     return `₹${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+  }
+
+  function csvEscape(value: string): string {
+    // RFC 4180: wrap in double-quotes and escape any internal double-quotes by doubling them
+    if (value.includes('"') || value.includes(',') || value.includes('\n')) {
+      return `"${value.replace(/"/g, '""')}"`
+    }
+    return value
+  }
+
+  function downloadCSV() {
+    const header = 'Token,Patient,Status,Time'
+    const rows = queueRows.map((r) => {
+      const token   = String(r.token_number ?? '')
+      const patient = csvEscape(r.patient?.name ?? 'Unknown')
+      const status  = r.status
+      const time    = new Date(r.created_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+      return `${token},${patient},${status},${time}`
+    })
+    const csv  = [header, ...rows].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href     = url
+    a.download = `session-${sessionId.slice(0, 8)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   return (
@@ -127,6 +175,14 @@ export function ZReport({ sessionId, onClose }: Props) {
         {/* footer */}
         {report && (
           <div className="flex justify-end gap-3 border-t border-gray-200 px-6 py-4">
+            <button
+              type="button"
+              onClick={downloadCSV}
+              className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-[#164e63] transition-colors hover:bg-gray-50"
+            >
+              <Download className="h-4 w-4" aria-hidden="true" />
+              CSV
+            </button>
             <button
               type="button"
               onClick={() => window.print()}

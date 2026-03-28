@@ -34,13 +34,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   })
 
   const loadProfile = useCallback(async (session: Session) => {
-    const { data: staffRecord } = await supabase
+    const { data: staffRecord, error: staffError } = await supabase
       .from('staff')
       .select('id, clinic_id, role, is_active, totp_required')
       .eq('user_id', session.user.id)
-      .single() as { data: StaffPartial | null }
+      .maybeSingle()
 
-    if (!staffRecord || !staffRecord.is_active) {
+    // staffError signals a real DB/RLS error; null data means no active staff row
+    if (staffError || !staffRecord) {
       setState((s) => ({ ...s, session, loading: false }))
       return
     }

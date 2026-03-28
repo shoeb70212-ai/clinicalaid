@@ -31,6 +31,27 @@ function GoogleIcon() {
   )
 }
 
+const MAX_ATTEMPTS = 5
+const LOCKOUT_MS   = 15 * 60 * 1000
+
+function getAttemptState(): { count: number; lockedUntil: number } {
+  try {
+    const stored = localStorage.getItem('cf_login_attempts')
+    if (!stored) return { count: 0, lockedUntil: 0 }
+    const parsed = JSON.parse(stored)
+    if (typeof parsed.count !== 'number' || typeof parsed.lockedUntil !== 'number') {
+      return { count: 0, lockedUntil: 0 }
+    }
+    return parsed
+  } catch {
+    return { count: 0, lockedUntil: 0 }
+  }
+}
+
+function saveAttemptState(state: { count: number; lockedUntil: number }) {
+  localStorage.setItem('cf_login_attempts', JSON.stringify(state))
+}
+
 export default function LoginPage({ mode = 'login' }: Props) {
   const navigate = useNavigate()
   const [params] = useSearchParams()
@@ -43,6 +64,11 @@ export default function LoginPage({ mode = 'login' }: Props) {
   const [loading,     setLoading]     = useState(false)
   const [oauthLoading, setOauthLoading] = useState(false)
   const [error,       setError]       = useState<string | null>(null)
+  const [attempts,    setAttempts]    = useState(getAttemptState)
+  const [setupNeeded, setSetupNeeded] = useState(false)
+
+  const isLocked = Date.now() < attempts.lockedUntil
+  const lockMinsLeft = Math.ceil((attempts.lockedUntil - Date.now()) / 60000)
 
   const inviteToken = params.get('token')
 
@@ -65,6 +91,12 @@ export default function LoginPage({ mode = 'login' }: Props) {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
+
+    if (mode === 'login' && isLocked) {
+      setError(`Too many failed attempts. Try again in ${lockMinsLeft} minute${lockMinsLeft === 1 ? '' : 's'}.`)
+      return
+    }
+
     setLoading(true)
     setError(null)
 
@@ -101,10 +133,24 @@ export default function LoginPage({ mode = 'login' }: Props) {
 
     const { data, error: loginError } = await supabase.auth.signInWithPassword({ email, password })
     if (loginError) {
-      setError(loginError.message)
+      const newCount = attempts.count + 1
+      const newAttempts = newCount >= MAX_ATTEMPTS
+        ? { count: 0, lockedUntil: Date.now() + LOCKOUT_MS }
+        : { count: newCount, lockedUntil: 0 }
+      setAttempts(newAttempts)
+      saveAttemptState(newAttempts)
+      if (newCount >= MAX_ATTEMPTS) {
+        setError(`Too many failed attempts. Account locked for 15 minutes.`)
+      } else {
+        setError(`${loginError.message} (${MAX_ATTEMPTS - newCount} attempt${MAX_ATTEMPTS - newCount === 1 ? '' : 's'} remaining)`)
+      }
       setLoading(false)
       return
     }
+
+    // Clear attempts on successful login
+    saveAttemptState({ count: 0, lockedUntil: 0 })
+    setAttempts({ count: 0, lockedUntil: 0 })
 
     // Check MFA
     const { data: mfaData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
@@ -113,21 +159,19 @@ export default function LoginPage({ mode = 'login' }: Props) {
       return
     }
 
-    // Query staff table directly for role (don't filter by is_active to see if user exists)
+    // RLS policy filters is_active=TRUE, so inactive staff return null here.
+    // Cannot distinguish "new user" from "deactivated user" via client query.
     const { data: staffRecord } = await supabase
       .from('staff')
-      .select('role, is_active, totp_required')
+      .select('role, totp_required')
       .eq('user_id', data.user.id)
-      .single()
+      .maybeSingle()
 
     if (!staffRecord) {
-      navigate('/setup')
-      return
-    }
-
-    if (!staffRecord.is_active) {
-      setError('Your account has been deactivated. Contact your clinic admin.')
+      // Could be a new user (no staff row yet) OR a deactivated user (row hidden by RLS).
+      // Sign out immediately so the session doesn't persist to an unusable state.
       await supabase.auth.signOut()
+      setSetupNeeded(true)
       setLoading(false)
       return
     }
@@ -146,8 +190,29 @@ export default function LoginPage({ mode = 'login' }: Props) {
           {mode === 'invite' ? 'Set up your account' : 'Sign in to ClinicFlow'}
         </h1>
 
+        {/* Account not found / deactivated banner */}
+        {setupNeeded && (
+          <div role="alert" className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <p className="text-sm font-semibold text-amber-800">Account not found or deactivated</p>
+            <p className="mt-1 text-xs text-amber-700">
+              If you are a new user, complete clinic setup below.
+              If your account has been deactivated, contact your clinic administrator.
+            </p>
+            <div className="mt-3 flex gap-3">
+              <a href="/setup"
+                className="cursor-pointer rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-800">
+                Complete Setup →
+              </a>
+              <button type="button" onClick={() => setSetupNeeded(false)}
+                className="cursor-pointer text-xs text-amber-700 underline">
+                Try a different account
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Google OAuth — only on login mode, not invite */}
-        {mode === 'login' && (
+        {mode === 'login' && !setupNeeded && (
           <>
             <button
               type="button"
@@ -190,7 +255,7 @@ export default function LoginPage({ mode = 'login' }: Props) {
         )}
 
         {/* Email/password form — always visible on invite, collapsible on login */}
-        {showEmail && (
+        {showEmail && !setupNeeded && (
           <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
             {mode === 'invite' && (
               <div className="flex flex-col gap-1">
@@ -252,6 +317,10 @@ export default function LoginPage({ mode = 'login' }: Props) {
                   }
                 </button>
               </div>
+              {/* Password strength — invite flow only */}
+              {mode === 'invite' && password.length > 0 && (
+                <PasswordStrength password={password} />
+              )}
             </div>
 
             {error && (
@@ -273,7 +342,7 @@ export default function LoginPage({ mode = 'login' }: Props) {
           </form>
         )}
 
-        {mode === 'login' && (
+        {mode === 'login' && !setupNeeded && (
           <p className="mt-4 text-center text-sm text-[#0e7490]">
             First time?{' '}
             <a href="/setup" className="font-medium text-[#0891b2] hover:underline">
@@ -283,5 +352,42 @@ export default function LoginPage({ mode = 'login' }: Props) {
         )}
       </div>
     </main>
+  )
+}
+
+// ── Password strength indicator ───────────────────────────────────────────────
+
+function scorePassword(pw: string): number {
+  let score = 0
+  if (pw.length >= 8)           score++
+  if (/[A-Z]/.test(pw))        score++
+  if (/[0-9]/.test(pw))        score++
+  if (/[^A-Za-z0-9]/.test(pw)) score++
+  return score
+}
+
+const STRENGTH_LABEL = ['', 'Weak', 'Fair', 'Strong', 'Very strong'] as const
+const STRENGTH_COLOR = ['', '#ef4444', '#f59e0b', '#22c55e', '#16a34a'] as const
+
+function PasswordStrength({ password }: { password: string }) {
+  const score = scorePassword(password)
+  const label = STRENGTH_LABEL[score]
+  const color = STRENGTH_COLOR[score]
+
+  return (
+    <div className="mt-1 flex flex-col gap-1">
+      <div className="flex gap-1">
+        {[1, 2, 3, 4].map((n) => (
+          <div
+            key={n}
+            className="h-1 flex-1 rounded-full transition-colors duration-300"
+            style={{ backgroundColor: n <= score ? color : '#e5e7eb' }}
+          />
+        ))}
+      </div>
+      <p className="text-xs font-medium" style={{ color }}>
+        {label}
+      </p>
+    </div>
   )
 }

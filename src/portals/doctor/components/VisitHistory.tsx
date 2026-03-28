@@ -19,6 +19,8 @@ export function VisitHistory({ patientId, clinicId }: Props) {
   const [expanded,  setExpanded]  = useState<string | null>(null)
   const [thumbsMap, setThumbsMap] = useState<Record<string, Thumbnail[]>>({})
   const [loading,   setLoading]   = useState(true)
+  const [dateFrom,  setDateFrom]  = useState('')
+  const [dateTo,    setDateTo]    = useState('')
 
   useEffect(() => {
     supabase
@@ -64,15 +66,57 @@ export function VisitHistory({ patientId, clinicId }: Props) {
     if (next && queueEntryId) loadAttachments(queueEntryId)
   }
 
+  const filteredVisits = visits.filter((v) => {
+    const d = v.created_at.slice(0, 10) // 'YYYY-MM-DD'
+    if (dateFrom && d < dateFrom) return false
+    if (dateTo   && d > dateTo)   return false
+    return true
+  })
+
   const sectionHeader = (
-    <div className="mb-3 flex items-center gap-2">
-      <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted)' }}>
-        Past Medical Visits
-      </p>
+    <div className="mb-3 flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <p className="text-[10px] font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted)' }}>
+          Past Medical Visits
+        </p>
+        {!loading && visits.length > 0 && (
+          <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ backgroundColor: 'var(--color-primary-container)', color: 'var(--color-primary)' }}>
+            {filteredVisits.length}{filteredVisits.length !== visits.length ? `/${visits.length}` : ''}
+          </span>
+        )}
+      </div>
+      {/* Date range filter */}
       {!loading && visits.length > 0 && (
-        <span className="rounded-full px-2 py-0.5 text-[10px] font-bold" style={{ backgroundColor: 'var(--color-primary-container)', color: 'var(--color-primary)' }}>
-          {visits.length}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            aria-label="From date"
+            className="rounded-lg border px-2 py-1 text-[10px] focus:outline-none focus:ring-1"
+            style={{ borderColor: 'var(--color-surface-container)', color: 'var(--color-ink)', backgroundColor: 'var(--color-surface)', '--tw-ring-color': 'var(--color-primary)' } as React.CSSProperties}
+          />
+          <span className="text-[10px]" style={{ color: 'var(--color-muted)' }}>—</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            aria-label="To date"
+            className="rounded-lg border px-2 py-1 text-[10px] focus:outline-none focus:ring-1"
+            style={{ borderColor: 'var(--color-surface-container)', color: 'var(--color-ink)', backgroundColor: 'var(--color-surface)', '--tw-ring-color': 'var(--color-primary)' } as React.CSSProperties}
+          />
+          {(dateFrom || dateTo) && (
+            <button
+              type="button"
+              onClick={() => { setDateFrom(''); setDateTo('') }}
+              aria-label="Clear date filter"
+              className="text-[10px] underline"
+              style={{ color: 'var(--color-primary)' }}
+            >
+              Clear
+            </button>
+          )}
+        </div>
       )}
     </div>
   )
@@ -108,9 +152,15 @@ export function VisitHistory({ patientId, clinicId }: Props) {
     <div>
       {sectionHeader}
 
+      {filteredVisits.length === 0 && (
+        <p className="py-4 text-center text-xs" style={{ color: 'var(--color-muted)' }}>
+          No visits in selected range.
+        </p>
+      )}
+
       {/* Timeline */}
       <div className="relative flex flex-col gap-1">
-        {visits.map((v, idx) => {
+        {filteredVisits.map((v, idx) => {
           const date   = new Date(v.created_at)
           const day    = date.toLocaleDateString('en-IN', { day: '2-digit' })
           const mon    = date.toLocaleDateString('en-IN', { month: 'short' })
@@ -131,7 +181,7 @@ export function VisitHistory({ patientId, clinicId }: Props) {
                     backgroundColor: idx === 0 ? 'var(--color-primary)' : 'var(--color-surface)',
                   }}
                 />
-                {idx < visits.length - 1 && (
+                {idx < filteredVisits.length - 1 && (
                   <div className="mt-1 w-px flex-1" style={{ backgroundColor: 'var(--color-surface-container)', minHeight: '20px' }} />
                 )}
               </div>

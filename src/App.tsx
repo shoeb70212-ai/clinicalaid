@@ -3,6 +3,7 @@ import { Suspense, lazy } from 'react'
 import { AuthProvider } from './hooks/useAuth'
 import { ProtectedRoute } from './components/shared/ProtectedRoute'
 import { LoadingSpinner } from './components/shared/LoadingSpinner'
+import { ToastProvider } from './components/shared/Toast'
 
 // Lazy-load portals to keep initial bundle small
 const SetupPortal      = lazy(() => import('./portals/setup/SetupPortal'))
@@ -20,6 +21,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <ToastProvider>
         <a href="#main-content" className="skip-link">Skip to main content</a>
         <Suspense fallback={<LoadingSpinner fullScreen />}>
           <Routes>
@@ -63,6 +65,7 @@ export default function App() {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
+        </ToastProvider>
       </AuthProvider>
     </BrowserRouter>
   )

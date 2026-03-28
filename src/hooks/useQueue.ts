@@ -29,10 +29,24 @@ export function useQueue(sessionId: string | null) {
     if (fetchError) {
       setError(fetchError.message)
     } else {
+      setError(null)
       setQueue(sortQueue(data as QueueEntryWithPatient[]))
     }
     setLoading(false)
   }, [sessionId])
+
+  /** Fetch a single entry with patient join — used for INSERT delta updates */
+  const fetchSingleEntry = useCallback(async (entryId: string): Promise<QueueEntryWithPatient | null> => {
+    const { data } = await supabase
+      .from('queue_entries')
+      .select(`
+        *,
+        patient:patients(id, name, dob, gender, mobile, blood_group, preferred_language)
+      `)
+      .eq('id', entryId)
+      .maybeSingle()
+    return data as QueueEntryWithPatient | null
+  }, [])
 
   useEffect(() => {
     if (!sessionId) return
@@ -50,9 +64,21 @@ export function useQueue(sessionId: string | null) {
           table:  'queue_entries',
           filter: `session_id=eq.${sessionId}`,
         },
-        () => {
-          // Re-fetch on any change — ensures patient join data is fresh
-          fetchQueue()
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            // Fetch the new entry with patient join, then append
+            fetchSingleEntry(payload.new.id).then((entry) => {
+              if (entry) setQueue((prev) => sortQueue([...prev, entry]))
+            })
+          } else if (payload.eventType === 'UPDATE') {
+            // Merge updated queue_entry fields into existing entry (preserves patient join)
+            setQueue((prev) => sortQueue(
+              prev.map((e) => e.id === payload.new.id ? { ...e, ...payload.new } : e)
+            ))
+          } else {
+            // DELETE — full refetch (rare)
+            fetchQueue()
+          }
         },
       )
       .subscribe()
@@ -60,7 +86,7 @@ export function useQueue(sessionId: string | null) {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [sessionId, fetchQueue])
+  }, [sessionId, fetchQueue, fetchSingleEntry])
 
   return { queue, loading, error, refetch: fetchQueue }
 }

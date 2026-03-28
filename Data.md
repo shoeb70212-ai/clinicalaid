@@ -2268,4 +2268,4 @@ INSERT INTO specialty_starter_packs(specialty, rank, drug_name, generic_name, ca
 ('Dentist',10,'PARACETAMOL + TRAMADOL','Paracetamol + Tramadol','Analgesic Combination Post-Extraction','1-0-1',3,'after_food'),
 ('Dentist',11,'AMOXICILLIN 250MG','Amoxicillin','Penicillin Antibiotic','1-1-1',7,'before_food'),
 ('Dentist',12,'AMOXICILLIN 500MG','Amoxicillin','Penicillin Antibiotic','1-1-1',7,'before_food'),
-('Dentist',13,'AMOXICLAV 375MG','Amoxicillin + Clavulanate','Beta-
+('Dentist',13,'AMOXICLAV 375MG','Amoxicillin + Clavulanate','Beta-Include below on

@@ -45,6 +45,17 @@
   --color-success:           #166534;
   --color-success-container: #dcfce7;
 
+  /* ── Dark mode surface tokens (referenced by html.dark override) ── */
+  --dark-color-background:        #0f1416;
+  --dark-color-surface:           #1a2024;
+  --dark-color-surface-low:       #232a2e;
+  --dark-color-surface-container: #2a3437;
+  --dark-color-surface-highest:   #3a464a;
+  --dark-color-ink:               #e8eff1;
+  --dark-color-muted:             #a9b4b7;
+  --dark-color-faded:             #566164;
+  --dark-color-outline:           #3a464a;
+
   /* ── Fonts ───────────────────────────────────────────────────── */
   /* --font-* creates font-heading / font-body Tailwind utilities  */
   --font-heading: "Manrope", sans-serif;
@@ -98,6 +109,32 @@ h1, h2, h3, h4, h5, h6 {
 .card-shadow {
   box-shadow: 0 8px 32px rgba(42, 52, 55, 0.06);
 }
+
+/* ── Dark mode — applied via .dark class on <html> (manual toggle) ── */
+/* All values sourced from @theme --dark-color-* tokens above.        */
+html.dark {
+  --color-background:        var(--dark-color-background);
+  --color-surface:           var(--dark-color-surface);
+  --color-surface-low:       var(--dark-color-surface-low);
+  --color-surface-container: var(--dark-color-surface-container);
+  --color-surface-highest:   var(--dark-color-surface-highest);
+  --color-ink:               var(--dark-color-ink);
+  --color-muted:             var(--dark-color-muted);
+  --color-faded:             var(--dark-color-faded);
+  --color-outline:           var(--dark-color-outline);
+}
+
+/* ── Panel transition animations ────────────────────────────────── */
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideOut {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(8px); }
+}
+.panel-enter { animation: slideIn 200ms ease-out both; }
+.panel-exit  { animation: slideOut 150ms ease-in both; }
 
 /* Reduce motion */
 @media (prefers-reduced-motion: reduce) {

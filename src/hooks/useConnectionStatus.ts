@@ -1,25 +1,54 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { supabase } from '../lib/supabase'
 
 /**
- * Tracks online/offline state using browser events.
- * When offline: all queue mutation buttons must be disabled.
- * OCC requires a DB round-trip — offline writes are never allowed.
+ * Tracks online/offline state using browser events + a Supabase ping.
+ * The ping detects captive portals where navigator.onLine is true
+ * but actual connectivity is blocked.
  */
 export function useConnectionStatus(): boolean {
   const [online, setOnline] = useState(navigator.onLine)
+  const pingRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function schedulePing() {
+    if (pingRef.current) clearTimeout(pingRef.current)
+    // Debounce: wait 1s after going "online" before pinging
+    pingRef.current = setTimeout(async () => {
+      try {
+        // select a single row — avoids leaking total clinic count via count header
+        const { error } = await supabase
+          .from('clinics')
+          .select('id')
+          .limit(1)
+        if (error) setOnline(false)
+      } catch {
+        setOnline(false)
+      }
+    }, 1000)
+  }
 
   useEffect(() => {
-    const setOn  = () => setOnline(true)
-    const setOff = () => setOnline(false)
+    function handleOnline() {
+      setOnline(true)
+      schedulePing()
+    }
+    function handleOffline() {
+      setOnline(false)
+      if (pingRef.current) clearTimeout(pingRef.current)
+    }
 
-    window.addEventListener('online',  setOn)
-    window.addEventListener('offline', setOff)
+    window.addEventListener('online',  handleOnline)
+    window.addEventListener('offline', handleOffline)
+
+    // Initial ping if browser reports online
+    if (navigator.onLine) schedulePing()
 
     return () => {
-      window.removeEventListener('online',  setOn)
-      window.removeEventListener('offline', setOff)
+      window.removeEventListener('online',  handleOnline)
+      window.removeEventListener('offline', handleOffline)
+      if (pingRef.current) clearTimeout(pingRef.current)
     }
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return online
 }

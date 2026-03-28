@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
-import { LogOut, RefreshCw, Calendar, Bell, BarChart2 } from 'lucide-react'
+import { LogOut, RefreshCw, Calendar, Bell, BarChart2, Moon, Sun } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useSession } from '../../hooks/useSession'
 import { useQueue } from '../../hooks/useQueue'
 import { useInactivityLogout } from '../../hooks/useInactivityLogout'
+import { useDarkMode } from '../../hooks/useDarkMode'
 import { OfflineBanner } from '../../components/shared/OfflineBanner'
 import { useConnectionStatus } from '../../hooks/useConnectionStatus'
 import { QueuePanel } from './components/QueuePanel'
@@ -21,6 +22,7 @@ export default function ReceptionPortal() {
 
   const { staff, clinic, signOut } = useAuth()
   const online = useConnectionStatus()
+  const { dark, toggle: toggleDark } = useDarkMode()
 
   // Apply clinic's brand color to CSS variable so bg-clinic / text-clinic utilities work
   useEffect(() => {
@@ -107,6 +109,10 @@ export default function ReceptionPortal() {
             className={`cursor-pointer rounded-lg p-2 transition-colors ${showAnalytics ? 'bg-[#e0f4f4] text-[#006a6a]' : 'text-[#0e7490] hover:bg-[#ecfeff]'}`}>
             <BarChart2 className="h-4 w-4" aria-hidden="true" />
           </button>
+          <button onClick={toggleDark} aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+            className="cursor-pointer rounded-lg p-2 text-[#0e7490] transition-colors hover:bg-[#ecfeff]">
+            {dark ? <Sun className="h-4 w-4" aria-hidden="true" /> : <Moon className="h-4 w-4" aria-hidden="true" />}
+          </button>
           <button onClick={signOut} aria-label="Sign out"
             className="cursor-pointer rounded-lg p-2 text-[#0e7490] transition-colors hover:bg-[#ecfeff]">
             <LogOut className="h-4 w-4" aria-hidden="true" />
@@ -118,7 +124,7 @@ export default function ReceptionPortal() {
       <SessionControls
         session={session}
         clinicId={clinic?.id ?? ''}
-        doctorId={staff?.id ?? ''}
+        doctorId={session?.doctor_id ?? staff?.id ?? ''}
         onSessionChange={handleSessionChange}
       />
 
@@ -157,6 +163,7 @@ export default function ReceptionPortal() {
                       staffRole={staff?.role ?? 'receptionist'}
                       online={online}
                       onUpdate={refetchQueue}
+                      avgSeconds={clinic?.config?.avg_consultation_seconds ?? 600}
                     />
                 }
               </div>
@@ -184,6 +191,12 @@ export default function ReceptionPortal() {
         {/* Appointments panel — full-screen overlay on mobile, side panel on desktop */}
         {showAppointments && (
           <div className="fixed inset-0 z-30 overflow-y-auto bg-white md:relative md:inset-auto md:z-auto md:flex md:w-2/5 md:flex-col md:border-l md:border-gray-200">
+            <div className="flex items-center justify-end px-4 py-2 md:hidden border-b border-gray-100">
+              <button onClick={() => setActivePanel(null)} aria-label="Close appointments"
+                className="cursor-pointer rounded-lg p-1.5 text-gray-400 hover:text-gray-600">
+                <span className="text-lg leading-none">×</span>
+              </button>
+            </div>
             <AppointmentPanel
               clinicId={clinic?.id ?? ''}
               doctorId={session?.doctor_id ?? ''}
@@ -195,6 +208,12 @@ export default function ReceptionPortal() {
         {/* Recall panel — full-screen overlay on mobile, side panel on desktop */}
         {showRecall && clinic?.config?.recall_engine_enabled && (
           <div className="fixed inset-0 z-30 overflow-y-auto bg-white md:relative md:inset-auto md:z-auto md:flex md:w-2/5 md:flex-col md:border-l md:border-gray-200">
+            <div className="flex items-center justify-end px-4 py-2 md:hidden border-b border-gray-100">
+              <button onClick={() => setActivePanel(null)} aria-label="Close recall"
+                className="cursor-pointer rounded-lg p-1.5 text-gray-400 hover:text-gray-600">
+                <span className="text-lg leading-none">×</span>
+              </button>
+            </div>
             <RecallPanel
               clinicId={clinic?.id ?? ''}
               sessionId={session?.id ?? null}
@@ -207,7 +226,13 @@ export default function ReceptionPortal() {
         {/* Analytics panel — full-screen overlay on mobile, side panel on desktop */}
         {showAnalytics && (
           <div className="fixed inset-0 z-30 overflow-y-auto bg-white md:relative md:inset-auto md:z-auto md:flex md:w-2/5 md:flex-col md:border-l md:border-gray-200">
-            <AnalyticsPanel clinicId={clinic?.id ?? ''} />
+            <div className="flex items-center justify-end px-4 py-2 md:hidden border-b border-gray-100">
+              <button onClick={() => setActivePanel(null)} aria-label="Close analytics"
+                className="cursor-pointer rounded-lg p-1.5 text-gray-400 hover:text-gray-600">
+                <span className="text-lg leading-none">×</span>
+              </button>
+            </div>
+            <AnalyticsPanel clinicId={clinic?.id ?? ''} currency={clinic?.config?.currency ?? '₹'} />
           </div>
         )}
       </main>

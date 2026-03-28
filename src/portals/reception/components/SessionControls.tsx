@@ -38,14 +38,19 @@ export function SessionControls({ session, clinicId, doctorId, onSessionChange }
     if (!session) return
     setLoading(true)
     setConfirmClose(false)
+    setSessionError(null)
 
-    await supabase
+    const { error } = await supabase
       .from('sessions')
       .update({ status })
       .eq('id', session.id)
 
     setLoading(false)
-    onSessionChange()
+    if (error) {
+      setSessionError(`Could not ${status === 'paused' ? 'pause' : 'close'} session: ${error.message}`)
+    } else {
+      onSessionChange()
+    }
   }
 
   const statusColors: Record<string, string> = {

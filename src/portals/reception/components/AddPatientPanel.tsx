@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { X } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
+import { calcAge } from '../../../lib/utils'
 import type { FamilyMember } from '../../../types'
 
 interface Props {
@@ -13,6 +14,9 @@ interface Props {
 export function AddPatientPanel({ sessionId, clinicId, onAdded, onClose }: Props) {
   const [mobile,        setMobile]        = useState('')
   const [name,          setName]          = useState('')
+  const [newDob,        setNewDob]        = useState('')
+  const [newGender,     setNewGender]     = useState('')
+  const [newBloodGroup, setNewBloodGroup] = useState('')
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[] | null>(null)
   const [step,          setStep]          = useState<'search' | 'select' | 'new' | 'consent'>('search')
   const [selectedId,    setSelectedId]    = useState<string | null>(null)
@@ -80,7 +84,14 @@ export function AddPatientPanel({ sessionId, clinicId, onAdded, onClose }: Props
         .limit(1)
         .maybeSingle()
 
-      setConsentText(tmpl?.content ?? '')
+      const text = tmpl?.content ?? ''
+      if (!text.trim()) {
+        // No consent template found — DPDP compliance requires it; block the flow
+        setError('No active consent template found for this clinic. Contact your admin to add one before adding patients.')
+        setLoading(false)
+        return
+      }
+      setConsentText(text)
       setStep('consent')
     } else {
       await addToQueue(patientId)
@@ -113,6 +124,9 @@ export function AddPatientPanel({ sessionId, clinicId, onAdded, onClose }: Props
       p_mobile:          mobile,
       p_consent_text:    tmpl?.content ?? '',
       p_consent_version: consentVersion,
+      p_dob:             newDob || null,
+      p_gender:          newGender || null,
+      p_blood_group:     newBloodGroup || null,
     })
 
     if (rpcError) { setError(rpcError.message); setLoading(false); return }
@@ -123,6 +137,22 @@ export function AddPatientPanel({ sessionId, clinicId, onAdded, onClose }: Props
 
   async function addToQueue(patientId: string) {
     setLoading(true)
+    setError(null)
+
+    // Guard: prevent adding the same patient twice to the same session
+    const { data: existing } = await supabase
+      .from('queue_entries')
+      .select('id')
+      .eq('session_id', sessionId)
+      .eq('patient_id', patientId)
+      .not('status', 'in', '("COMPLETED","CANCELLED")')
+      .limit(1)
+
+    if (existing && existing.length > 0) {
+      setError('This patient is already in today\'s queue.')
+      setLoading(false)
+      return
+    }
 
     // Atomic token generation
     const { data: counter, error: counterError } = await supabase
@@ -175,7 +205,7 @@ export function AddPatientPanel({ sessionId, clinicId, onAdded, onClose }: Props
   return (
     <div className="flex h-full flex-col">
       <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-100 bg-white px-4 py-3">
-        <h2 className="font-['Figtree'] font-semibold text-[#164e63]">Add Patient</h2>
+        <h2 className="font-heading font-semibold text-[#164e63]">Add Patient</h2>
         <button onClick={onClose} aria-label="Close" className="cursor-pointer rounded p-1 text-gray-400 hover:text-gray-600">
           <X className="h-5 w-5" aria-hidden="true" />
         </button>
@@ -202,7 +232,7 @@ export function AddPatientPanel({ sessionId, clinicId, onAdded, onClose }: Props
             {familyMembers.map((m) => (
               <button key={m.id} type="button" onClick={() => checkConsentAndQueue(m.id)}
                 className="cursor-pointer rounded-xl border border-gray-200 px-4 py-3 text-left text-[#164e63] transition-colors hover:border-[#0891b2] hover:bg-[#ecfeff]">
-                {m.name} {m.dob ? `— ${new Date().getFullYear() - new Date(m.dob).getFullYear()}y` : ''}
+                {m.name} {m.dob ? `— ${calcAge(m.dob)}y` : ''}
               </button>
             ))}
             <button type="button" onClick={() => setStep('new')}
@@ -220,6 +250,34 @@ export function AddPatientPanel({ sessionId, clinicId, onAdded, onClose }: Props
               <input id="newName" type="text" value={name} onChange={(e) => setName(e.target.value)}
                 required className={inputCls} />
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1">
+                <label htmlFor="newDob" className="text-sm font-medium text-[#164e63]">Date of birth</label>
+                <input id="newDob" type="date" value={newDob} onChange={(e) => setNewDob(e.target.value)}
+                  max={new Date().toISOString().split('T')[0]}
+                  className={inputCls} />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label htmlFor="newGender" className="text-sm font-medium text-[#164e63]">Gender</label>
+                <select id="newGender" value={newGender} onChange={(e) => setNewGender(e.target.value)}
+                  className={inputCls}>
+                  <option value="">Select</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="newBloodGroup" className="text-sm font-medium text-[#164e63]">Blood group</label>
+              <select id="newBloodGroup" value={newBloodGroup} onChange={(e) => setNewBloodGroup(e.target.value)}
+                className={inputCls}>
+                <option value="">Unknown / not provided</option>
+                {['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'].map((bg) => (
+                  <option key={bg} value={bg}>{bg}</option>
+                ))}
+              </select>
+            </div>
             {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
             <button type="button" onClick={createNewPatient} disabled={loading || !name} className={btnCls}>
               {loading ? 'Adding…' : 'Add to Queue'}
@@ -229,7 +287,7 @@ export function AddPatientPanel({ sessionId, clinicId, onAdded, onClose }: Props
 
         {step === 'consent' && (
           <div className="flex flex-col gap-4">
-            <h3 className="font-['Figtree'] font-semibold text-[#164e63]">Patient Consent Required</h3>
+            <h3 className="font-heading font-semibold text-[#164e63]">Patient Consent Required</h3>
             <div className="max-h-60 overflow-y-auto rounded-lg border border-gray-200 p-3 text-xs text-[#164e63] leading-relaxed">
               {consentText}
             </div>

@@ -1,11 +1,12 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
-import { LogOut, Menu, X, Stethoscope, Clock } from 'lucide-react'
+import { LogOut, Menu, X, Stethoscope, Clock, Moon, Sun } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useSession } from '../../hooks/useSession'
 import { useQueue } from '../../hooks/useQueue'
 import { useInactivityLogout } from '../../hooks/useInactivityLogout'
 import { useConnectionStatus } from '../../hooks/useConnectionStatus'
+import { useDarkMode } from '../../hooks/useDarkMode'
 import { OfflineBanner } from '../../components/shared/OfflineBanner'
 import { LoadingSpinner } from '../../components/shared/LoadingSpinner'
 import { DoctorQueueSidebar } from './components/DoctorQueueSidebar'
@@ -19,6 +20,7 @@ export default function DoctorPortal() {
 
   const { staff, clinic, signOut } = useAuth()
   const online = useConnectionStatus()
+  const { dark, toggle: toggleDark } = useDarkMode()
   const isSolo = clinic?.clinic_mode === 'solo'
 
   const { session, loading: sessionLoading, refetch: refetchSession } = useSession(staff?.id ?? null)
@@ -107,6 +109,14 @@ export default function DoctorPortal() {
             {sidebarOpen ? <X className="h-5 w-5" aria-hidden="true" /> : <Menu className="h-5 w-5" aria-hidden="true" />}
           </button>
           <button
+            onClick={toggleDark}
+            aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+            className="cursor-pointer rounded-lg p-2 transition-colors hover:bg-[#f0f4f6]"
+            style={{ color: '#566164' }}
+          >
+            {dark ? <Sun className="h-4 w-4" aria-hidden="true" /> : <Moon className="h-4 w-4" aria-hidden="true" />}
+          </button>
+          <button
             onClick={signOut}
             aria-label="Sign out"
             className="cursor-pointer rounded-lg p-2 transition-colors hover:bg-[#f0f4f6]"
@@ -158,6 +168,7 @@ export default function DoctorPortal() {
                     queue={queue}
                     activeId={displayEntry?.id ?? null}
                     onSelect={handleSelectEntry}
+                    avgSeconds={clinic?.config?.avg_consultation_seconds ?? 600}
                   />
               }
             </aside>

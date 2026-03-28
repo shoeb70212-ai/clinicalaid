@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import { updateQueueStatus } from '../../../lib/occ'
 import { isValidTransition } from '../../../lib/transitions'
@@ -6,18 +7,28 @@ import type { QueueEntryWithPatient, StaffRole, QueueStatus } from '../../../typ
 import { useTranslation } from 'react-i18next'
 
 interface Props {
-  queue:      QueueEntryWithPatient[]
-  sessionId:  string
-  clinicId:   string
-  staffRole:  StaffRole
-  online:     boolean
-  onUpdate:   () => void
+  queue:       QueueEntryWithPatient[]
+  sessionId:   string
+  clinicId:    string
+  staffRole:   StaffRole
+  online:      boolean
+  onUpdate:    () => void
+  avgSeconds?: number
 }
 
-export function QueuePanel({ queue, staffRole, online, onUpdate }: Props) {
+export function QueuePanel({ queue, staffRole, online, onUpdate, avgSeconds = 600 }: Props) {
   const { t } = useTranslation()
+  const [transitionError, setTransitionError] = useState<string | null>(null)
 
   const active = queue.filter((e) => !['COMPLETED', 'CANCELLED'].includes(e.status))
+
+  async function handleTransition(entry: QueueEntryWithPatient, to: QueueStatus) {
+    if (!online) return
+    setTransitionError(null)
+    const result = await updateQueueStatus(entry.id, entry.version, to)
+    if (result.success || result.reason === 'conflict') onUpdate()
+    else setTransitionError(`Could not update ${entry.patient.name}: ${result.reason ?? 'Unknown error'}`)
+  }
 
   if (active.length === 0) {
     return (
@@ -27,20 +38,22 @@ export function QueuePanel({ queue, staffRole, online, onUpdate }: Props) {
     )
   }
 
-  async function handleTransition(entry: QueueEntryWithPatient, to: QueueStatus) {
-    if (!online) return
-    const result = await updateQueueStatus(entry.id, entry.version, to)
-    if (result.success) onUpdate()
-    // conflict: onUpdate() re-fetches silently — no error shown
-    else if (result.reason === 'conflict') onUpdate()
-  }
-
   return (
+    <>
+    {transitionError && (
+      <div role="alert" className="flex items-center justify-between px-4 py-2 text-xs"
+        style={{ backgroundColor: '#fef2f2', color: '#991b1b', borderBottom: '1px solid #fecaca' }}>
+        <span>{transitionError}</span>
+        <button type="button" onClick={() => setTransitionError(null)}
+          className="ml-2 shrink-0 cursor-pointer font-semibold">Dismiss</button>
+      </div>
+    )}
     <ul className="flex-1 overflow-y-auto divide-y divide-gray-100 px-4 py-2" aria-label="Queue">
-      {active.map((entry) => {
+      {active.map((entry, idx) => {
         const age = calcAge(entry.patient.dob ?? null)
+        const waitMins = Math.round((idx * avgSeconds) / 60)
+        const waitText = idx === 0 ? 'Now' : `~${waitMins} min`
 
-        // Estimate wait time
         return (
           <li key={entry.id} className="py-3">
             <div className="flex items-start justify-between gap-4">
@@ -62,7 +75,10 @@ export function QueuePanel({ queue, staffRole, online, onUpdate }: Props) {
                     {age != null ? `${age}${entry.patient.gender === 'male' ? 'M' : entry.patient.gender === 'female' ? 'F' : ''}` : ''}
                     {entry.patient.blood_group ? ` · ${entry.patient.blood_group}` : ''}
                   </p>
-                  <p className="text-xs text-gray-400">{t(`queue.status.${entry.status}`)}</p>
+                  <p className="text-xs text-gray-400">
+                    {t(`queue.status.${entry.status}`)}
+                    <span className="ml-2 font-medium text-[#0891b2]">{waitText}</span>
+                  </p>
                 </div>
               </div>
 
@@ -85,6 +101,7 @@ export function QueuePanel({ queue, staffRole, online, onUpdate }: Props) {
         )
       })}
     </ul>
+    </>
   )
 }
 

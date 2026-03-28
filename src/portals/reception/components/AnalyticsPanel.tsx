@@ -22,7 +22,8 @@ interface TopItem {
 }
 
 interface Props {
-  clinicId: string
+  clinicId:  string
+  currency?: string
 }
 
 const PERIOD_OPTIONS = [
@@ -31,24 +32,32 @@ const PERIOD_OPTIONS = [
   { label: '90d', days: 90 },
 ]
 
-function fmt(paise: number) {
-  return `₹${(paise / 100).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
+function fmt(paise: number, currency = '₹') {
+  return `${currency}${(paise / 100).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`
 }
 
-export function AnalyticsPanel({ clinicId }: Props) {
+export function AnalyticsPanel({ clinicId, currency = '₹' }: Props) {
   const [period,     setPeriod]     = useState(30)
   const [daily,      setDaily]      = useState<DailyStat[]>([])
   const [diagnoses,  setDiagnoses]  = useState<TopItem[]>([])
   const [drugs,      setDrugs]      = useState<TopItem[]>([])
   const [loading,    setLoading]    = useState(true)
+  const [fetchError, setFetchError] = useState<string | null>(null)
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
+    setFetchError(null)
     const [dailyRes, diagRes, drugRes] = await Promise.all([
       supabase.rpc('get_daily_stats',    { p_clinic_id: clinicId, p_days: period }),
       supabase.rpc('get_top_diagnoses',  { p_clinic_id: clinicId, p_days: period, p_limit: 8 }),
       supabase.rpc('get_top_drugs',      { p_clinic_id: clinicId, p_days: period, p_limit: 8 }),
     ])
+
+    const errors = [dailyRes.error, diagRes.error, drugRes.error].filter(Boolean)
+    if (errors.length > 0) {
+      setFetchError(`Could not load some analytics data: ${errors.map(e => e!.message).join(', ')}`)
+    }
+
     setDaily((dailyRes.data ?? []) as DailyStat[])
     setDiagnoses(((diagRes.data ?? []) as { complaint: string; count: number }[])
       .map((r) => ({ name: r.complaint, count: Number(r.count) })))
@@ -122,7 +131,7 @@ export function AnalyticsPanel({ clinicId }: Props) {
                 { label: 'Total Patients', value: totals.patients.toLocaleString('en-IN'), color: '#006a6a', bg: '#e0f4f4' },
                 { label: 'Completed',      value: totals.completed.toLocaleString('en-IN'), color: '#166534', bg: '#dcfce7' },
                 { label: 'No Shows',       value: totals.noShows.toLocaleString('en-IN'),   color: '#6b7280', bg: '#f3f4f6' },
-                { label: 'Revenue',        value: fmt(totals.revenue),                       color: '#1d4ed8', bg: '#eff6ff' },
+                { label: 'Revenue',        value: fmt(totals.revenue, currency),             color: '#1d4ed8', bg: '#eff6ff' },
               ].map((card) => (
                 <div key={card.label} className="rounded-xl p-3"
                   style={{ backgroundColor: card.bg }}>
@@ -176,7 +185,7 @@ export function AnalyticsPanel({ clinicId }: Props) {
                     <YAxis tick={{ fontSize: 9, fill: '#a9b4b7' }} tickLine={false} axisLine={false} />
                     <Tooltip
                       contentStyle={{ fontSize: 11, borderRadius: 8, border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
-                      formatter={(v) => [`₹${Number(v).toLocaleString('en-IN')}`, 'Revenue']} />
+                      formatter={(v) => [`${currency}${Number(v).toLocaleString('en-IN')}`, 'Revenue']} />
                     <Bar dataKey="Revenue" fill="#0891b2" radius={[3, 3, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>

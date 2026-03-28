@@ -19,7 +19,8 @@ export function useSession(doctorId: string | null, clinicId?: string | null) {
     if (!doctorId && !clinicId) return
     setLoading(true)
 
-    const today = new Date().toISOString().split('T')[0]
+    // India is UTC+5:30 — toISOString() returns UTC which can be "tomorrow" after 6:30 PM IST
+    const today = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().split('T')[0]
 
     let query = supabase
       .from('sessions')

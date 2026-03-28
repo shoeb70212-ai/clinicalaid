@@ -46,6 +46,7 @@ export function RecallPanel({ clinicId, sessionId, online, onQueued }: Props) {
   async function handleAddToQueue(row: RecallRow) {
     if (!sessionId || !online) return
     setQueuing(row.patient_id)
+    setError(null)
     const { error: addError } = await supabase.rpc('add_to_queue', {
       p_session_id:  sessionId,
       p_clinic_id:   clinicId,
@@ -59,6 +60,8 @@ export function RecallPanel({ clinicId, sessionId, online, onQueued }: Props) {
       // Remove from recall list optimistically
       setRows((prev) => prev.filter((r) => r.patient_id !== row.patient_id))
       onQueued?.()
+    } else {
+      setError(`Failed to add ${row.patient_name} to queue: ${addError.message}`)
     }
   }
 

@@ -1,5 +1,7 @@
 import type { QueueStatus, StaffRole } from '../types'
 
+type OccResult = { success: boolean; reason?: string; data?: unknown }
+
 /**
  * Valid state machine transitions.
  * Source of truth: docs/03-state-machine.md
@@ -51,6 +53,22 @@ export function isValidTransition(
   if (!allowed) return false
 
   return allowed.includes(role)
+}
+
+/**
+ * Handles an OCC result: calls onUpdate on success or conflict, onError on genuine failures.
+ * Use this as a shared handler wherever queue status transitions occur.
+ */
+export function handleQueueTransition(
+  result: OccResult,
+  onUpdate: () => void,
+  onError?: (reason: string) => void,
+) {
+  if (result.success || result.reason === 'conflict') {
+    onUpdate()
+  } else {
+    onError?.(result.reason ?? 'Unknown error')
+  }
 }
 
 /**
