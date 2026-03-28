@@ -32,6 +32,13 @@ export default function DoctorPortal() {
     setSidebarOpen(false)
   }, [])
 
+  // Apply clinic's brand color to CSS variable so bg-clinic / text-clinic utilities work
+  useEffect(() => {
+    if (clinic?.primary_color) {
+      document.documentElement.style.setProperty('--color-clinic', clinic.primary_color)
+    }
+  }, [clinic?.primary_color])
+
   useEffect(() => {
     if (sidebarOpen) {
       document.body.style.overflow = 'hidden'

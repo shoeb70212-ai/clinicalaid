@@ -22,6 +22,13 @@ export default function ReceptionPortal() {
   const { staff, clinic, signOut } = useAuth()
   const online = useConnectionStatus()
 
+  // Apply clinic's brand color to CSS variable so bg-clinic / text-clinic utilities work
+  useEffect(() => {
+    if (clinic?.primary_color) {
+      document.documentElement.style.setProperty('--color-clinic', clinic.primary_color)
+    }
+  }, [clinic?.primary_color])
+
   // Query by clinic_id so receptionists in team mode find the doctor's session.
   const { session, loading: sessionLoading, refetch: refetchSession } = useSession(null, clinic?.id ?? null)
   const { queue,   loading: queueLoading,   refetch: refetchQueue   } = useQueue(session?.id ?? null)

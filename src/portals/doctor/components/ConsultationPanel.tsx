@@ -1,7 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { pdf } from '@react-pdf/renderer'
 import { AlertTriangle, ShieldCheck, ShieldX, Droplets, Trash2, Plus, Download } from 'lucide-react'
-import { PrescriptionPDF } from './PrescriptionPDF'
 import { updateQueueStatus, updateQueueNotes, verifyIdentity } from '../../../lib/occ'
 import { isValidTransition } from '../../../lib/transitions'
 import { saveDraft, loadDraft, clearDraft } from '../../../lib/draftSave'
@@ -85,7 +83,7 @@ export function ConsultationPanel({ entry, clinicId, doctorId, staffId, online, 
 
     if (to === 'COMPLETED' && result.success && result.data) {
       // Save structured visit record to the visits + prescriptions tables
-      await supabase.rpc('save_visit', {
+      const { error: visitError } = await supabase.rpc('save_visit', {
         p_clinic_id:         clinicId,
         p_patient_id:        entry.patient_id,
         p_queue_entry_id:    entry.id,
@@ -98,8 +96,9 @@ export function ConsultationPanel({ entry, clinicId, doctorId, staffId, online, 
         p_temperature:       parseFloat(draft.vitals.temperature) || null,
         p_spo2:              parseInt(draft.vitals.spo2)         || null,
         p_weight:            parseFloat(draft.vitals.weight)     || null,
-        p_prescriptions:     JSON.stringify(draft.prescriptionItems ?? []),
+        p_prescriptions:     draft.prescriptionItems ?? [],
       })
+      if (visitError) console.error('[save_visit] Failed:', visitError.message)
 
       // Also write lightweight summary to queue_entries.notes for backward compat
       const notes = JSON.stringify({
@@ -136,21 +135,26 @@ export function ConsultationPanel({ entry, clinicId, doctorId, staffId, online, 
 
   async function handleDownloadRx() {
     const date = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+    const [{ pdf }, { PrescriptionPDF }] = await Promise.all([
+      import('@react-pdf/renderer'),
+      import('./PrescriptionPDF'),
+    ])
     const blob = await pdf(
-      <PrescriptionPDF
-        patientName={patient.name}
-        patientDob={patient.dob ?? null}
-        patientGender={patient.gender ?? null}
-        doctorName={doctorName}
-        specialty={specialty ?? null}
-        regNumber={regNumber ?? null}
-        clinicName={clinicName}
-        clinicAddress={clinicAddress ?? null}
-        clinicPhone={clinicPhone ?? null}
-        chiefComplaint={draft.chiefComplaint}
-        prescriptions={draft.prescriptionItems ?? []}
-        date={date}
-      />
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (PrescriptionPDF as any)({
+        patientName:    patient.name,
+        patientDob:     patient.dob ?? null,
+        patientGender:  patient.gender ?? null,
+        doctorName,
+        specialty:      specialty ?? null,
+        regNumber:      regNumber ?? null,
+        clinicName,
+        clinicAddress:  clinicAddress ?? null,
+        clinicPhone:    clinicPhone ?? null,
+        chiefComplaint: draft.chiefComplaint,
+        prescriptions:  draft.prescriptionItems ?? [],
+        date,
+      })
     ).toBlob()
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')

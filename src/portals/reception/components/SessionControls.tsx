@@ -11,12 +11,14 @@ interface Props {
 }
 
 export function SessionControls({ session, clinicId, doctorId, onSessionChange }: Props) {
-  const [loading,  setLoading]  = useState(false)
+  const [loading,      setLoading]      = useState(false)
   const [confirmClose, setConfirmClose] = useState(false)
+  const [sessionError, setSessionError] = useState<string | null>(null)
 
   async function openSession() {
     if (!clinicId || !doctorId) return
     setLoading(true)
+    setSessionError(null)
 
     // Atomic: creates session + session_counters in one DB transaction
     const { error } = await supabase.rpc('open_session', {
@@ -24,9 +26,11 @@ export function SessionControls({ session, clinicId, doctorId, onSessionChange }
       p_doctor_id: doctorId,
     })
 
-    if (error) console.error('Failed to open session:', error.message)
-
     setLoading(false)
+    if (error) {
+      setSessionError(error.message)
+      return
+    }
     onSessionChange()
   }
 
@@ -52,6 +56,9 @@ export function SessionControls({ session, clinicId, doctorId, onSessionChange }
 
   return (
     <div className="flex items-center gap-3 border-b border-gray-100 bg-white px-4 py-2 flex-wrap">
+      {sessionError && (
+        <span className="text-xs text-red-600">{sessionError}</span>
+      )}
       {session ? (
         <>
           <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[session.status] ?? ''}`}>

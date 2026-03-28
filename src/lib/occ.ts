@@ -65,11 +65,12 @@ export async function updateQueueNotes(
     .select()
     .single()
 
+  if (error && error.code !== 'PGRST116') {
+    console.error('[OCC] Unexpected error:', error.code, error.message)
+    return { success: false, reason: 'error' }
+  }
   if (!data) {
     return { success: false, reason: 'conflict' }
-  }
-  if (error) {
-    return { success: false, reason: 'error' }
   }
   return { success: true, data: data as QueueEntry }
 }
@@ -90,11 +91,12 @@ export async function verifyIdentity(
     .select()
     .single()
 
+  if (error && error.code !== 'PGRST116') {
+    console.error('[OCC] Unexpected error:', error.code, error.message)
+    return { success: false, reason: 'error' }
+  }
   if (!data) {
     return { success: false, reason: 'conflict' }
-  }
-  if (error) {
-    return { success: false, reason: 'error' }
   }
   return { success: true, data: data as QueueEntry }
 }

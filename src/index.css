@@ -1,34 +1,55 @@
 @import "tailwindcss";
 
 @theme {
-  /* Stitch design system — "Clinical Editorial" */
-  --color-primary:          #006a6a;
-  --color-primary-dark:     #005c5c;
-  --color-primary-light:    #95f2f1;
-  --color-primary-container:#e0f4f4;
-  --color-cta:              #006a6a;
-  --color-cta-dark:         #005c5c;
+  /* ── Brand / Primary ───────────────────────────────────────── */
+  --color-primary:           #006a6a;
+  --color-primary-dark:      #005c5c;
+  --color-primary-light:     #95f2f1;
+  --color-primary-container: #e0f4f4;
 
-  /* Surfaces — tonal layering (no border lines) */
-  --color-background:            #f8fafb;
-  --color-surface:               #ffffff;
-  --color-surface-low:           #f0f4f6;
-  --color-surface-container:     #e8eff1;
-  --color-surface-highest:       #d9e4e8;
+  /* ── Clinic dynamic theming ────────────────────────────────── */
+  /* Set at runtime: document.documentElement.style.setProperty('--color-clinic', clinic.primary_color) */
+  /* Utilities: bg-clinic, text-clinic, border-clinic           */
+  --color-clinic:            #006a6a;   /* default = primary; overridden per-clinic */
+  --color-clinic-container:  #e0f4f4;  /* light tint of clinic color */
 
-  /* Typography */
-  --color-text:             #2a3437;
-  --color-text-muted:       #566164;
-  --color-text-disabled:    #8ea3a8;
-  --color-outline-variant:  #a9b4b7;
+  /* ── Reception portal accent (Tailwind cyan palette) ────────── */
+  /* Separate from the teal primary — reception uses a cyan tone  */
+  --color-accent:            #0891b2;  /* cyan-600  — buttons, badges   */
+  --color-accent-dark:       #0e7490;  /* cyan-700  — hover states      */
+  --color-accent-deep:       #164e63;  /* cyan-900  — heading text      */
+  --color-accent-surface:    #ecfeff;  /* cyan-50   — hover bg          */
 
-  /* Semantic */
-  --color-error:            #9f403d;
-  --color-error-container:  #fe8983;
-  --color-warning:          #7f5700;
-  --color-warning-container:#feb300;
+  /* ── Surfaces — tonal layering ─────────────────────────────── */
+  --color-background:        #f8fafb;
+  --color-surface:           #ffffff;
+  --color-surface-low:       #f0f4f6;
+  --color-surface-container: #e8eff1;
+  --color-surface-highest:   #d9e4e8;
 
-  /* Fonts */
+  /* ── Typography ─────────────────────────────────────────────── */
+  /* text-ink / bg-ink — main text */
+  --color-ink:               #2a3437;
+  /* text-muted — secondary labels */
+  --color-muted:             #566164;
+  /* text-faded — disabled / placeholder */
+  --color-faded:             #8ea3a8;
+  /* border-outline — dividers, input borders */
+  --color-outline:           #a9b4b7;
+
+  /* ── Semantic ───────────────────────────────────────────────── */
+  --color-error:             #9f403d;
+  --color-error-container:   #fef2f2;
+  --color-warning:           #b45309;
+  --color-warning-container: #fef9f0;
+  --color-success:           #166534;
+  --color-success-container: #dcfce7;
+
+  /* ── Fonts ───────────────────────────────────────────────────── */
+  /* --font-* creates font-heading / font-body Tailwind utilities  */
+  --font-heading: "Manrope", sans-serif;
+  --font-body:    "Inter", sans-serif;
+  /* Keep --font-family-* for var() usage in base styles           */
   --font-family-heading: "Manrope", sans-serif;
   --font-family-body:    "Inter", sans-serif;
 }
