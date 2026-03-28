@@ -13,10 +13,16 @@ interface Thumbnail {
   publicUrl: string
 }
 
-function parseNotes(raw: string): { chiefComplaint: string; quickNotes: string } | null {
+interface ParsedNotes {
+  chiefComplaint:    string
+  quickNotes:        string
+  prescriptionItems?: Array<{ drug_name: string; dosage: string; duration_days: number; timing?: string }>
+}
+
+function parseNotes(raw: string): ParsedNotes | null {
   try {
     const parsed = JSON.parse(raw)
-    if (parsed && typeof parsed.chiefComplaint === 'string') return parsed
+    if (parsed && typeof parsed.chiefComplaint === 'string') return parsed as ParsedNotes
   } catch { /* plain text */ }
   return null
 }
@@ -166,6 +172,24 @@ export function VisitHistory({ patientId, clinicId }: Props) {
                         )}
                         {parsed.quickNotes && (
                           <p className="mt-1"><span className="font-semibold" style={{ color: '#006a6a' }}>Notes: </span>{parsed.quickNotes}</p>
+                        )}
+                        {parsed.prescriptionItems && parsed.prescriptionItems.length > 0 && (
+                          <div className="mt-2">
+                            <p className="mb-1 font-semibold" style={{ color: '#006a6a' }}>Rx:</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {parsed.prescriptionItems.map((item, i) => (
+                                <span key={i}
+                                  className="inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[10px] font-bold"
+                                  style={{ backgroundColor: '#006a6a', color: '#fff' }}>
+                                  {item.drug_name}
+                                  <span className="rounded px-1 font-normal"
+                                    style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
+                                    {item.dosage} · {item.duration_days}d
+                                  </span>
+                                </span>
+                              ))}
+                            </div>
+                          </div>
                         )}
                       </>
                     ) : (
