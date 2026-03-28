@@ -11,26 +11,20 @@ interface Props {
 }
 
 export function SessionControls({ session, clinicId, doctorId, onSessionChange }: Props) {
-  const [loading, setLoading] = useState(false)
+  const [loading,  setLoading]  = useState(false)
+  const [confirmClose, setConfirmClose] = useState(false)
 
   async function openSession() {
     if (!clinicId || !doctorId) return
     setLoading(true)
 
-    const { data: newSession, error } = await supabase
-      .from('sessions')
-      .insert({ clinic_id: clinicId, doctor_id: doctorId })
-      .select()
-      .single()
+    // Atomic: creates session + session_counters in one DB transaction
+    const { error } = await supabase.rpc('open_session', {
+      p_clinic_id: clinicId,
+      p_doctor_id: doctorId,
+    })
 
-    if (!error && newSession) {
-      // Create session_counters row
-      await supabase.from('session_counters').insert({
-        session_id: newSession.id,
-        clinic_id:  clinicId,
-        token_count: 0,
-      })
-    }
+    if (error) console.error('Failed to open session:', error.message)
 
     setLoading(false)
     onSessionChange()
@@ -39,6 +33,7 @@ export function SessionControls({ session, clinicId, doctorId, onSessionChange }
   async function updateStatus(status: 'paused' | 'closed') {
     if (!session) return
     setLoading(true)
+    setConfirmClose(false)
 
     await supabase
       .from('sessions')
@@ -56,7 +51,7 @@ export function SessionControls({ session, clinicId, doctorId, onSessionChange }
   }
 
   return (
-    <div className="flex items-center gap-3 border-b border-gray-100 bg-white px-4 py-2">
+    <div className="flex items-center gap-3 border-b border-gray-100 bg-white px-4 py-2 flex-wrap">
       {session ? (
         <>
           <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[session.status] ?? ''}`}>
@@ -74,11 +69,24 @@ export function SessionControls({ session, clinicId, doctorId, onSessionChange }
               <Play className="h-3 w-3" aria-hidden="true" /> Resume
             </button>
           )}
-          {session.status !== 'closed' && (
-            <button onClick={() => updateStatus('closed')} disabled={loading}
+          {session.status !== 'closed' && !confirmClose && (
+            <button onClick={() => setConfirmClose(true)} disabled={loading}
               className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-red-200 px-3 py-1 text-xs text-red-600 transition-colors hover:bg-red-50 disabled:opacity-60">
               <Square className="h-3 w-3" aria-hidden="true" /> Close Session
             </button>
+          )}
+          {confirmClose && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-red-600">Close session? This cannot be undone.</span>
+              <button onClick={() => updateStatus('closed')} disabled={loading}
+                className="cursor-pointer rounded-lg bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-60">
+                Confirm
+              </button>
+              <button onClick={() => setConfirmClose(false)}
+                className="cursor-pointer text-xs text-gray-400 hover:underline">
+                Cancel
+              </button>
+            </div>
           )}
         </>
       ) : (

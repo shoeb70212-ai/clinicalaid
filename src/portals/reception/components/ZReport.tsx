@@ -57,7 +57,11 @@ export function ZReport({ sessionId, onClose }: Props) {
   }
 
   return (
+    <>
+      {/* Print: hide everything except the report card */}
+      <style>{`@media print { body > * { display: none !important; } #zreport-print { display: block !important; position: static !important; } }`}</style>
     <div
+      id="zreport-print"
       role="dialog"
       aria-modal="true"
       aria-label="End-of-Day Report"
@@ -142,6 +146,7 @@ export function ZReport({ sessionId, onClose }: Props) {
         )}
       </div>
     </div>
+    </>
   )
 }
 

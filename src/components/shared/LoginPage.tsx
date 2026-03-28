@@ -121,7 +121,7 @@ export default function LoginPage({ mode = 'login' }: Props) {
 
   return (
     <main id="main-content" className="flex min-h-screen items-center justify-center bg-[#ecfeff] p-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-sm">
+      <div className="w-full max-w-sm md:max-w-md rounded-2xl bg-white p-8 shadow-sm">
         <h1 className="mb-6 font-['Figtree'] text-2xl font-bold text-[#164e63]">
           {mode === 'invite' ? 'Set up your account' : 'Sign in to ClinicFlow'}
         </h1>
@@ -224,7 +224,7 @@ export default function LoginPage({ mode = 'login' }: Props) {
                   type="button"
                   onClick={() => setShowPass((v) => !v)}
                   aria-label={showPass ? 'Hide password' : 'Show password'}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer p-1 text-gray-400 hover:text-gray-600"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 flex h-[44px] w-[44px] cursor-pointer items-center justify-center text-gray-400 hover:text-gray-600"
                 >
                   {showPass
                     ? <EyeOff className="h-4 w-4" aria-hidden="true" />

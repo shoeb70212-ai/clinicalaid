@@ -48,6 +48,7 @@ export function useSession(doctorId: string | null) {
           event:  'UPDATE',
           schema: 'public',
           table:  'sessions',
+          filter: `doctor_id=eq.${doctorId}`,
         },
         (payload) => {
           const updated = payload.new as Session

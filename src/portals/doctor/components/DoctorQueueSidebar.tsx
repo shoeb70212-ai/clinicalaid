@@ -16,7 +16,10 @@ export function DoctorQueueSidebar({ queue, activeId, onSelect }: Props) {
         Waiting ({visible.filter((e) => e.status === 'CHECKED_IN').length})
       </p>
       {visible.length === 0 && (
-        <p className="px-2 py-4 text-center text-xs text-gray-400">Queue is empty</p>
+        <div className="px-4 py-8 text-center">
+          <p className="text-sm font-medium text-gray-400">No patients waiting</p>
+          <p className="mt-1 text-xs text-gray-300">Patients appear here when checked in</p>
+        </div>
       )}
       {visible.map((entry) => (
         <button

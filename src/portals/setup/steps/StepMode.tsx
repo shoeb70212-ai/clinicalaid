@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { User, Users } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import type { SetupData } from '../SetupPortal'
 import type { ClinicMode } from '../../../types'
@@ -52,7 +53,7 @@ export function StepMode({ data, update, onNext }: Props) {
             data.clinicMode === 'solo' ? 'border-[#0891b2] bg-[#ecfeff]' : 'border-gray-200 bg-white'
           } disabled:cursor-not-allowed disabled:opacity-60`}
         >
-          <div className="mb-3 text-3xl" aria-hidden="true">👨‍⚕️</div>
+          <div className="mb-3" aria-hidden="true"><User className="h-8 w-8 text-[#0891b2]" /></div>
           <h2 className="font-['Figtree'] text-lg font-semibold text-[#164e63]">Just Me</h2>
           <p className="mt-1 text-sm text-[#0e7490]">
             I handle everything myself. No reception staff.
@@ -69,7 +70,7 @@ export function StepMode({ data, update, onNext }: Props) {
             data.clinicMode === 'team' ? 'border-[#0891b2] bg-[#ecfeff]' : 'border-gray-200 bg-white'
           } disabled:cursor-not-allowed disabled:opacity-60`}
         >
-          <div className="mb-3 text-3xl" aria-hidden="true">👥</div>
+          <div className="mb-3" aria-hidden="true"><Users className="h-8 w-8 text-[#0891b2]" /></div>
           <h2 className="font-['Figtree'] text-lg font-semibold text-[#164e63]">With a Receptionist</h2>
           <p className="mt-1 text-sm text-[#0e7490]">
             I have staff who manage the queue for me.

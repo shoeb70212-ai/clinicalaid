@@ -15,10 +15,16 @@ const CHANNEL_NAME = 'clinicflow_activity'
  */
 export function useInactivityLogout(timeoutMs: number): void {
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
-  const bcRef    = useRef<BroadcastChannel>(undefined)
+  const bcRef    = useRef<BroadcastChannel | undefined>(undefined)
 
   useEffect(() => {
-    bcRef.current = new BroadcastChannel(CHANNEL_NAME)
+    // BroadcastChannel may throw in Safari <15.3 or private/incognito mode.
+    // Fallback: single-tab inactivity timer (no cross-tab coordination).
+    try {
+      bcRef.current = new BroadcastChannel(CHANNEL_NAME)
+    } catch {
+      bcRef.current = undefined
+    }
 
     const logout = async () => {
       await supabase.auth.signOut()
@@ -35,15 +41,17 @@ export function useInactivityLogout(timeoutMs: number): void {
     }
 
     // Another tab sent activity — reset our timer
-    bcRef.current.onmessage = () => {
-      startTimer()
+    if (bcRef.current) {
+      bcRef.current.onmessage = () => {
+        startTimer()
+      }
     }
 
-    // Throttle: fire at most once per second
+    // Throttle: fire at most once per 5 seconds to reduce BroadcastChannel traffic
     let lastFired = 0
     const throttledReset = () => {
       const now = Date.now()
-      if (now - lastFired > 1000) {
+      if (now - lastFired > 5000) {
         lastFired = now
         startTimer()
         broadcast()

@@ -47,6 +47,34 @@ export async function updateQueueStatus(
 }
 
 /**
+ * Write notes to a queue entry via OCC.
+ * Called AFTER a successful status transition — use the version from that result.
+ * If conflict (another write happened between status change and notes write),
+ * the draft is still recoverable from localStorage.
+ */
+export async function updateQueueNotes(
+  id: string,
+  currentVersion: number,
+  notes: string,
+): Promise<OCCResult> {
+  const { data, error } = await supabase
+    .from('queue_entries')
+    .update({ notes, version: currentVersion + 1 })
+    .eq('id', id)
+    .eq('version', currentVersion)
+    .select()
+    .single()
+
+  if (!data) {
+    return { success: false, reason: 'conflict' }
+  }
+  if (error) {
+    return { success: false, reason: 'error' }
+  }
+  return { success: true, data: data as QueueEntry }
+}
+
+/**
  * Verify patient identity for QR check-in entries.
  * Updates identity_verified = true via OCC pattern.
  */

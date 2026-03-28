@@ -74,7 +74,7 @@ export function QueuePanel({ queue, staffRole, online, onUpdate }: Props) {
                   return (
                     <button key={to} onClick={() => handleTransition(entry, to)}
                       disabled={!online}
-                      className={`cursor-pointer rounded-lg px-3 py-1.5 text-xs font-medium transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50 ${variantCls[variant]}`}>
+                      className={`min-h-[44px] cursor-pointer rounded-lg px-3 py-2 text-xs font-medium transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50 ${variantCls[variant]}`}>
                       {label}
                     </button>
                   )

@@ -107,7 +107,7 @@ export function AddPatientPanel({ sessionId, clinicId, onAdded, onClose }: Props
       .maybeSingle()
 
     // Create patient + consent in one transaction via RPC
-    const { data: result, error: rpcError } = await supabase.rpc('create_patient_with_consent', {
+    const { data: result, error: rpcError } = await supabase.rpc('create_new_patient', {
       p_clinic_id:       clinicId,
       p_name:            name,
       p_mobile:          mobile,
@@ -168,7 +168,7 @@ export function AddPatientPanel({ sessionId, clinicId, onAdded, onClose }: Props
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-100 bg-white px-4 py-3">
         <h2 className="font-['Figtree'] font-semibold text-[#164e63]">Add Patient</h2>
         <button onClick={onClose} aria-label="Close" className="cursor-pointer rounded p-1 text-gray-400 hover:text-gray-600">
           <X className="h-5 w-5" aria-hidden="true" />

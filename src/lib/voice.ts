@@ -6,5 +6,5 @@
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function onVoiceInput(_callback: (transcript: string) => void): void {
   // V2: integrate Whisper local ASR here
-  throw new Error('Voice input is not available in V1')
+  console.warn('Voice input is not available in V1')
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { AlertTriangle, ShieldCheck, ShieldX } from 'lucide-react'
-import { updateQueueStatus, verifyIdentity } from '../../../lib/occ'
+import { updateQueueStatus, updateQueueNotes, verifyIdentity } from '../../../lib/occ'
 import { isValidTransition } from '../../../lib/transitions'
 import { saveDraft, loadDraft, clearDraft } from '../../../lib/draftSave'
 import { calcAge } from '../../../lib/utils'
@@ -56,15 +56,15 @@ export function ConsultationPanel({ entry, clinicId, doctorId: _doctorId, staffI
 
     const result = await updateQueueStatus(entry.id, entry.version, to)
 
-    if (to === 'COMPLETED' && result.success) {
-      // Only write notes after OCC succeeds — avoids orphaned notes on conflict.
-      // Store as JSON so V2 can reliably parse chiefComplaint vs quickNotes separately.
-      // A plain \n separator breaks when the doctor types newlines in the textarea.
+    if (to === 'COMPLETED' && result.success && result.data) {
+      // Write notes via OCC using the updated version from the status transition.
+      // If another write raced between status change and notes write, the conflict
+      // is safe — draft is still recoverable from localStorage.
       const notes = JSON.stringify({
         chiefComplaint: draft.chiefComplaint,
         quickNotes:     draft.quickNotes,
       })
-      await supabase.from('queue_entries').update({ notes }).eq('id', entry.id)
+      await updateQueueNotes(entry.id, result.data.version, notes)
       clearDraft(staffId, entry.id)
     }
 

@@ -68,7 +68,7 @@ export default function ReceptionPortal() {
         {session ? (
           <>
             {/* Queue panel — full width or split with add patient */}
-            <div className={`flex flex-col ${showAddPatient ? 'w-3/5' : 'w-full'} overflow-hidden`}>
+            <div className={`flex flex-col ${showAddPatient ? 'md:w-3/5' : ''} w-full overflow-hidden`}>
               <div className="flex items-center justify-between border-b border-gray-100 px-4 py-2">
                 <h2 className="font-['Figtree'] font-semibold text-[#164e63]">
                   Queue
@@ -100,9 +100,9 @@ export default function ReceptionPortal() {
               }
             </div>
 
-            {/* Add patient panel */}
+            {/* Add patient panel — full-screen overlay on mobile, side panel on desktop */}
             {showAddPatient && (
-              <div className="w-2/5 border-l border-gray-200 overflow-y-auto">
+              <div className="fixed inset-0 z-40 overflow-y-auto bg-white md:relative md:inset-auto md:z-auto md:w-2/5 md:border-l md:border-gray-200">
                 <AddPatientPanel
                   sessionId={session.id}
                   clinicId={clinic?.id ?? ''}

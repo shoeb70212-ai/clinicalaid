@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { LogOut } from 'lucide-react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
+import { LogOut, Menu, X } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useSession } from '../../hooks/useSession'
 import { useQueue } from '../../hooks/useQueue'
@@ -24,10 +24,29 @@ export default function DoctorPortal() {
   const { queue,   loading: queueLoading,   refetch: refetchQueue   } = useQueue(session?.id ?? null)
 
   const [activeEntry, setActiveEntry] = useState<QueueEntryWithPatient | null>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  const handleSelectEntry = useCallback((entry: QueueEntryWithPatient) => {
+    setActiveEntry(entry)
+    setSidebarOpen(false) // Auto-close drawer on mobile after selection
+  }, [])
+
+  // Lock body scroll when mobile sidebar is open
+  useEffect(() => {
+    if (sidebarOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [sidebarOpen])
 
   if (sessionLoading) return <LoadingSpinner fullScreen />
 
-  const inConsultation = queue.find((e) => e.status === 'IN_CONSULTATION') ?? null
+  const inConsultation = useMemo(
+    () => queue.find((e) => e.status === 'IN_CONSULTATION') ?? null,
+    [queue],
+  )
 
   // Auto-select in-consultation patient
   const displayEntry = activeEntry ?? inConsultation
@@ -50,6 +69,10 @@ export default function DoctorPortal() {
         <div className="flex items-center gap-2">
           <span className={`h-2 w-2 rounded-full ${online ? 'bg-green-500' : 'bg-red-500'}`}
             aria-label={online ? 'Live' : 'Offline'} />
+          <button onClick={() => setSidebarOpen((v) => !v)} aria-label="Toggle queue"
+            className="cursor-pointer rounded-lg p-2 text-[#0e7490] transition-colors hover:bg-[#ecfeff] md:hidden">
+            {sidebarOpen ? <X className="h-5 w-5" aria-hidden="true" /> : <Menu className="h-5 w-5" aria-hidden="true" />}
+          </button>
           <button onClick={signOut} aria-label="Sign out"
             className="cursor-pointer rounded-lg p-2 text-[#0e7490] transition-colors hover:bg-[#ecfeff]">
             <LogOut className="h-4 w-4" aria-hidden="true" />
@@ -80,14 +103,19 @@ export default function DoctorPortal() {
       <main id="main-content" className="flex flex-1 overflow-hidden">
         {session ? (
           <>
-            {/* Queue sidebar */}
-            <aside className="w-56 shrink-0 overflow-y-auto border-r border-gray-200 bg-white">
+            {/* Backdrop for mobile drawer */}
+            {sidebarOpen && (
+              <div className="fixed inset-0 z-30 bg-black/30 md:hidden" onClick={() => setSidebarOpen(false)} />
+            )}
+
+            {/* Queue sidebar — drawer on mobile, static on desktop */}
+            <aside className={`fixed inset-y-0 left-0 z-40 w-64 transform overflow-y-auto border-r border-gray-200 bg-white transition-transform duration-200 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:z-auto md:w-56 md:translate-x-0 md:transition-none`}>
               {queueLoading
                 ? <LoadingSpinner />
                 : <DoctorQueueSidebar
                     queue={queue}
                     activeId={displayEntry?.id ?? null}
-                    onSelect={setActiveEntry}
+                    onSelect={handleSelectEntry}
                   />
               }
             </aside>

@@ -112,7 +112,7 @@ export function StaffMFASettings() {
                         : `Enable 2FA for ${s.name}`
                     }
                     className={[
-                      'inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors',
+                      'inline-flex min-h-[44px] cursor-pointer items-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium transition-colors',
                       s.totp_required
                         ? 'bg-[#cffafe] text-[#0e7490] hover:bg-[#a5f3fc]'
                         : 'bg-gray-100 text-gray-500 hover:bg-gray-200',

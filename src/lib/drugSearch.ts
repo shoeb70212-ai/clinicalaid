@@ -104,7 +104,7 @@ export async function checkBannedDrug(drugName: string): Promise<BannedCheck> {
   const { data } = await supabase
     .from('master_drugs')
     .select('is_banned, ban_date, ban_reason')
-    .ilike('name', drugName)
+    .ilike('name', escapeLike(drugName))
     .maybeSingle()
 
   if (data?.is_banned) {

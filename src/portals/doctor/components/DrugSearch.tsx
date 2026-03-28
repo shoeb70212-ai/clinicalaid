@@ -175,7 +175,7 @@ export function DrugSearch({ doctorId, clinicId, online, onAddDrug }: Props) {
         <ul
           role="listbox"
           aria-label="Drug results"
-          className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg"
+          className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg"
         >
           {results.map((drug, i) => (
             <li key={i} role="option" aria-selected={false}>
@@ -202,11 +202,12 @@ export function DrugSearch({ doctorId, clinicId, online, onAddDrug }: Props) {
               </button>
             </li>
           ))}
-          {/* custom drug option at bottom */}
-          {!online && results.length === 0 && (
-            <li className="px-4 py-3 text-sm text-gray-400">Not in your batch — add as custom drug when online.</li>
-          )}
         </ul>
+      )}
+
+      {/* offline fallback — shown only when no results and offline */}
+      {query.trim().length > 0 && !banned && results.length === 0 && !online && (
+        <p className="mt-1 text-xs text-gray-400 px-1">Not in your batch — add as custom drug when online.</p>
       )}
 
       {/* dosage form — shown after drug selected and not banned */}

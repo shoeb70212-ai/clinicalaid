@@ -87,12 +87,12 @@ export function RapidAddBar({ sessionId, clinicId, doctorId, online, onAdded }: 
 
   return (
     <div className="border-b border-gray-200 bg-white px-4 py-2">
-      <form onSubmit={handleAdd} className="flex items-end gap-2" aria-label="Add patient (rapid mode)">
+      <form onSubmit={handleAdd} className="flex flex-wrap items-end gap-2" aria-label="Add patient (rapid mode)">
         <div className="flex flex-col gap-0.5">
           <label htmlFor="rapidMobile" className="text-xs text-[#0e7490]">Mobile</label>
           <input id="rapidMobile" type="tel" value={mobile} onChange={(e) => setMobile(e.target.value)}
             placeholder="9876543210" disabled={!online}
-            className="w-32 rounded-lg border border-gray-200 px-2 py-1.5 text-sm text-[#164e63] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0891b2] disabled:opacity-50" />
+            className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-sm text-[#164e63] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0891b2] disabled:opacity-50 sm:w-32" />
         </div>
         <div className="flex flex-col gap-0.5 flex-1">
           <label htmlFor="rapidName" className="text-xs text-[#0e7490]">Name</label>

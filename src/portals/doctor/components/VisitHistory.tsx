@@ -153,7 +153,7 @@ export function VisitHistory({ patientId, clinicId }: Props) {
                       <img
                         src={t.publicUrl}
                         alt="Scanned prescription"
-                        className="h-14 w-14 rounded-lg border border-gray-200 object-cover transition-opacity hover:opacity-80"
+                        className="h-16 w-16 rounded-lg border border-gray-200 object-cover transition-opacity hover:opacity-80"
                       />
                     </a>
                   ))}

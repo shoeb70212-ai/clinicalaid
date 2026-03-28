@@ -6,5 +6,6 @@
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function onScanLabReport(_file: File): Promise<string> {
-  return Promise.reject(new Error('Lab report OCR is not available in V1'))
+  console.warn('Lab report OCR is not available in V1')
+  return Promise.resolve('')
 }

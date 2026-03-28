@@ -77,7 +77,7 @@ export function DisplayPortal() {
             // flash only if token actually changed
             if (prev?.current_token !== next.current_token) {
               setFlash(true)
-              setTimeout(() => setFlash(false), 1200)
+              setTimeout(() => setFlash(false), 600)
             }
             return next
           })
@@ -146,7 +146,7 @@ export function DisplayPortal() {
             }`}
           >
             {display.current_token != null ? (
-              <span className="text-8xl font-extrabold tabular-nums">
+              <span className="text-6xl font-extrabold tabular-nums sm:text-7xl md:text-8xl">
                 {display.current_token}
               </span>
             ) : (
