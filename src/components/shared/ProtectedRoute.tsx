@@ -24,7 +24,10 @@ export function ProtectedRoute({ children, allowedRoles, requireMFA = false }: P
 
   if (!session)  return <Navigate to="/login" replace />
 
-  if (!role || !allowedRoles.includes(role as StaffRole)) {
+  // Authenticated but no staff record = onboarding incomplete
+  if (!role) return <Navigate to="/setup" replace />
+
+  if (!allowedRoles.includes(role as StaffRole)) {
     return <Navigate to="/unauthorized" replace />
   }
 

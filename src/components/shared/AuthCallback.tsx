@@ -5,57 +5,42 @@ import { LoadingSpinner } from './LoadingSpinner'
 
 /**
  * OAuth redirect landing page.
- * Supabase redirects here after Google consent with a `code` param.
- * We exchange it for a session, then route by role — same logic as LoginPage.
+ * With implicit flow, Supabase parses the hash token on client init and fires
+ * SIGNED_IN via onAuthStateChange. We register the listener BEFORE calling
+ * getSession() so the event is never missed.
  * Route: /auth/callback
  */
-async function routeBySession(session: { user: { id: string } }, navigate: (path: string, opts?: { replace: boolean }) => void) {
-  console.log('[AuthCallback] routeBySession started, user:', session.user.id)
+type NavFn = (path: string, opts?: { replace: boolean }) => void
 
-  // Query staff table directly using the user's ID (don't filter by is_active yet)
-  const { data: staffRecord, error: staffError } = await supabase
+async function routeBySession(session: { user: { id: string } }, navigate: NavFn) {
+  const { data: staffRecord } = await supabase
     .from('staff')
     .select('id, clinic_id, role, is_active, totp_required')
     .eq('user_id', session.user.id)
     .single()
 
-  console.log('[AuthCallback] Staff query result:', { 
-    hasData: !!staffRecord, 
-    error: staffError?.message,
-    role: staffRecord?.role,
-    isActive: staffRecord?.is_active
-  })
-
   if (!staffRecord) {
-    // No staff record = new user going to onboarding
-    console.log('[AuthCallback] No staff record - routing to /setup')
     navigate('/setup', { replace: true })
     return
   }
 
-  // Check if staff is active - if not, redirect to login with message
   if (!staffRecord.is_active) {
-    console.log('[AuthCallback] Staff exists but is inactive - redirect to login')
     await supabase.auth.signOut()
     navigate('/login', { replace: true })
     return
   }
 
-  console.log('[AuthCallback] Staff found, role:', staffRecord.role)
-
-  // Check MFA requirement
   const { data: mfaData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
   const needsMfa =
     staffRecord.totp_required !== false &&
     mfaData?.nextLevel === 'aal2' &&
     mfaData?.currentLevel !== 'aal2'
 
-  if (needsMfa) { 
-    navigate('/verify-mfa', { replace: true }); 
-    return 
+  if (needsMfa) {
+    navigate('/verify-mfa', { replace: true })
+    return
   }
 
-  // Route by role
   if (staffRecord.role === 'doctor' || staffRecord.role === 'admin') {
     navigate('/doctor', { replace: true })
   } else if (staffRecord.role === 'receptionist') {
@@ -69,35 +54,43 @@ export default function AuthCallback() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    console.log('[AuthCallback] mounted, url:', window.location.href)
+    let done = false
 
-    // Small delay to ensure session is fully established
-    setTimeout(() => {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        console.log('[AuthCallback] getSession result:', session ? 'HAS SESSION' : 'NO SESSION', session?.user?.id)
-        
-        if (session) { 
-          routeBySession(session, navigate); 
-          return 
-        }
+    // Register listener FIRST — implicit flow fires SIGNED_IN during client
+    // init, before React mounts. We must not miss it.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session && !done) {
+        done = true
+        subscription.unsubscribe()
+        clearTimeout(fallback)
+        routeBySession(session, navigate)
+      }
+    })
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-          console.log('[AuthCallback] onAuthStateChange event:', event, session?.user?.id)
-          if (event === 'SIGNED_IN' && session) {
-            subscription.unsubscribe()
-            routeBySession(session, navigate)
-          }
-        })
+    // Also check if a session was already parsed before the listener registered
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session && !done) {
+        done = true
+        subscription.unsubscribe()
+        clearTimeout(fallback)
+        routeBySession(session, navigate)
+      }
+    })
 
-        const timeout = setTimeout(() => {
-          console.log('[AuthCallback] TIMEOUT — no session after 10s, redirecting to login')
-          subscription.unsubscribe()
-          navigate('/login', { replace: true })
-        }, 10000)
+    // Safety fallback — should never fire in practice
+    const fallback = setTimeout(() => {
+      if (!done) {
+        done = true
+        subscription.unsubscribe()
+        navigate('/login', { replace: true })
+      }
+    }, 10000)
 
-        return () => { clearTimeout(timeout); subscription.unsubscribe() }
-      })
-    }, 500) // 500ms delay to ensure session is ready
+    return () => {
+      done = true
+      clearTimeout(fallback)
+      subscription.unsubscribe()
+    }
   }, [navigate])
 
   return <LoadingSpinner fullScreen />

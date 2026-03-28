@@ -8,7 +8,15 @@ import {
 } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import type { AuthState, Staff, Clinic, StaffRole } from '../types'
+import type { AuthState, Clinic, StaffRole } from '../types'
+
+type StaffPartial = {
+  id: string
+  clinic_id: string
+  role: string
+  is_active: boolean
+  totp_required: boolean | null
+}
 
 const AuthContext = createContext<AuthState & {
   signOut: () => Promise<void>
@@ -26,51 +34,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   })
 
   const loadProfile = useCallback(async (session: Session) => {
-    // Query staff table directly using user's user_id
-    // This is more reliable than relying on JWT enrichment edge function
-    console.log('[useAuth] loadProfile called, user id:', session.user.id)
-
-    const { data: staffRecord, error: staffError } = await supabase
+    const { data: staffRecord } = await supabase
       .from('staff')
       .select('id, clinic_id, role, is_active, totp_required')
       .eq('user_id', session.user.id)
-      .single()
+      .single() as { data: StaffPartial | null }
 
-    console.log('[useAuth] Staff query result:', { 
-      hasData: !!staffRecord, 
-      error: staffError?.message,
-      role: staffRecord?.role,
-      isActive: staffRecord?.is_active
-    })
-
-    if (staffError) {
-      console.error('[useAuth] Staff query error:', staffError.message)
-      // Continue even on error - might be RLS blocking
-    }
-
-    if (!staffRecord) {
-      // No staff record = new user going to onboarding
-      console.log('[useAuth] No staff record - allowing access to app')
-      setState((s) => ({ ...s, loading: false }))
+    if (!staffRecord || !staffRecord.is_active) {
+      setState((s) => ({ ...s, session, loading: false }))
       return
     }
 
-    // Check if staff is active
-    if (!staffRecord.is_active) {
-      console.log('[useAuth] Staff record exists but is inactive')
-      setState((s) => ({ ...s, loading: false }))
-      return
-    }
-
-    const clinicId = staffRecord.clinic_id
     const role = staffRecord.role as StaffRole
     const totpRequired = staffRecord.totp_required ?? true
 
-    // Get clinic details
     const { data: clinicRes } = await supabase
       .from('clinics')
       .select('*')
-      .eq('id', clinicId)
+      .eq('id', staffRecord.clinic_id)
       .single()
 
     const { data: mfaLevel } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
@@ -78,27 +59,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setState({
       session,
-      staff: staffRecord as Staff,
-      clinic: clinicRes as Clinic | null,
+      staff:        staffRecord as AuthState['staff'],
+      clinic:       clinicRes as Clinic | null,
       role,
       totpRequired,
       mfaVerified,
-      loading: false,
+      loading:      false,
     })
   }, [])
 
   useEffect(() => {
-    // Initial session load
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        loadProfile(session)
-      } else {
-        setState((s) => ({ ...s, loading: false }))
-      }
-    })
+    // Register listener first to avoid missing SIGNED_IN on implicit flow
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Skip INITIAL_SESSION — handled by getSession() below to avoid double load
+      if (event === 'INITIAL_SESSION') return
 
-    // Subscribe to auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
         loadProfile(session)
       } else {
@@ -111,6 +86,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           mfaVerified:  false,
           loading:      false,
         })
+      }
+    })
+
+    // Handle initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        loadProfile(session)
+      } else {
+        setState((s) => ({ ...s, loading: false }))
       }
     })
 
