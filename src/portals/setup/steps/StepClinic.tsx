@@ -1,6 +1,7 @@
 import { useState, type FormEvent, type ChangeEvent } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { validateWCAGAA, isValidHex } from '../../../lib/wcag'
+import { useAuth } from '../../../hooks/useAuth'
 import type { SetupData } from '../SetupPortal'
 
 // 12 curated preset colours — all WCAG AA verified against white
@@ -26,6 +27,7 @@ interface Props {
 }
 
 export function StepClinic({ data, update, onNext }: Props) {
+  const { session } = useAuth()
   const [customColor, setCustomColor]       = useState('')
   const [contrastError, setContrastError]   = useState<string | null>(null)
   const [loading, setLoading]               = useState(false)
@@ -70,8 +72,7 @@ export function StepClinic({ data, update, onNext }: Props) {
     }
 
     // Create staff record for the doctor
-    // Use data.staffId set by SetupPortal from OAuth session — avoids re-fetching session
-    const userId = data.staffId
+    const userId = session?.user?.id
     if (!userId) {
       setError('Session lost — please sign in again.')
       setLoading(false)
