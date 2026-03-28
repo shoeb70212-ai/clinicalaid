@@ -52,6 +52,15 @@ export function StepClinic({ data, update, onNext }: Props) {
     setLoading(true)
     setError(null)
 
+    // Get session first — must be done before any async DB calls
+    const { data: { session: currentSession } } = await supabase.auth.getSession()
+    const userId = currentSession?.user?.id
+    if (!userId) {
+      setError('Session lost — please sign in again.')
+      setLoading(false)
+      return
+    }
+
     // Create clinic row
     const { data: clinicRow, error: clinicError } = await supabase
       .from('clinics')
@@ -72,13 +81,6 @@ export function StepClinic({ data, update, onNext }: Props) {
     }
 
     // Create staff record for the doctor
-    const userId = session?.user?.id
-    if (!userId) {
-      setError('Session lost — please sign in again.')
-      setLoading(false)
-      return
-    }
-
     const { error: staffError } = await supabase
       .from('staff')
       .insert({
