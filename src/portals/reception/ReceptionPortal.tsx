@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { LogOut, RefreshCw } from 'lucide-react'
+import { LogOut, RefreshCw, Calendar } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useSession } from '../../hooks/useSession'
@@ -9,6 +9,7 @@ import { OfflineBanner } from '../../components/shared/OfflineBanner'
 import { useConnectionStatus } from '../../hooks/useConnectionStatus'
 import { QueuePanel } from './components/QueuePanel'
 import { AddPatientPanel } from './components/AddPatientPanel'
+import { AppointmentPanel } from './components/AppointmentPanel'
 import { SessionControls } from './components/SessionControls'
 import { ZReport } from './components/ZReport'
 import { LoadingSpinner } from '../../components/shared/LoadingSpinner'
@@ -23,7 +24,8 @@ export default function ReceptionPortal() {
   const { session, loading: sessionLoading, refetch: refetchSession } = useSession(null, clinic?.id ?? null)
   const { queue,   loading: queueLoading,   refetch: refetchQueue   } = useQueue(session?.id ?? null)
 
-  const [showAddPatient, setShowAddPatient] = useState(false)
+  const [showAddPatient,   setShowAddPatient]   = useState(false)
+  const [showAppointments, setShowAppointments] = useState(false)
   const [zReportSessionId, setZReportSessionId] = useState<string | null>(null)
   // Capture session ID before close so Z-Report can be shown after session disappears
   const closingSessionIdRef = useRef<string | null>(null)
@@ -71,6 +73,12 @@ export default function ReceptionPortal() {
             className="cursor-pointer rounded-lg p-2 text-[#0e7490] transition-colors hover:bg-[#ecfeff]">
             <RefreshCw className="h-4 w-4" aria-hidden="true" />
           </button>
+          <button onClick={() => setShowAppointments((v) => !v)}
+            aria-label="Appointments"
+            aria-pressed={showAppointments}
+            className={`cursor-pointer rounded-lg p-2 transition-colors ${showAppointments ? 'bg-[#e0f4f4] text-[#006a6a]' : 'text-[#0e7490] hover:bg-[#ecfeff]'}`}>
+            <Calendar className="h-4 w-4" aria-hidden="true" />
+          </button>
           <button onClick={signOut} aria-label="Sign out"
             className="cursor-pointer rounded-lg p-2 text-[#0e7490] transition-colors hover:bg-[#ecfeff]">
             <LogOut className="h-4 w-4" aria-hidden="true" />
@@ -88,57 +96,71 @@ export default function ReceptionPortal() {
 
       {/* Main content */}
       <main id="main-content" className="flex flex-1 overflow-hidden">
-        {session ? (
-          <>
-            {/* Queue panel — full width or split with add patient */}
-            <div className={`flex flex-col ${showAddPatient ? 'md:w-3/5' : ''} w-full overflow-hidden`}>
-              <div className="flex items-center justify-between border-b border-gray-100 px-4 py-2">
-                <h2 className="font-['Figtree'] font-semibold text-[#164e63]">
-                  Queue
-                  {!queueLoading && (
-                    <span className="ml-2 rounded-full bg-[#0891b2] px-2 py-0.5 text-xs text-white">
-                      {queue.filter((q) => ['CHECKED_IN', 'CALLED'].includes(q.status)).length}
-                    </span>
-                  )}
-                </h2>
-                <button
-                  onClick={() => setShowAddPatient((v) => !v)}
-                  disabled={!online}
-                  className="cursor-pointer rounded-lg bg-[#0891b2] px-3 py-1.5 text-sm text-white transition-colors hover:bg-[#0e7490] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {showAddPatient ? 'Close' : '+ Add Patient'}
-                </button>
+        {/* Queue area */}
+        <div className={`flex flex-col overflow-hidden ${showAppointments ? 'hidden md:flex md:w-3/5' : 'flex-1'}`}>
+          {session ? (
+            <>
+              {/* Queue panel — full width or split with add patient */}
+              <div className={`flex flex-col ${showAddPatient ? 'md:w-3/5' : ''} w-full overflow-hidden flex-1`}>
+                <div className="flex items-center justify-between border-b border-gray-100 px-4 py-2">
+                  <h2 className="font-['Figtree'] font-semibold text-[#164e63]">
+                    Queue
+                    {!queueLoading && (
+                      <span className="ml-2 rounded-full bg-[#0891b2] px-2 py-0.5 text-xs text-white">
+                        {queue.filter((q) => ['CHECKED_IN', 'CALLED'].includes(q.status)).length}
+                      </span>
+                    )}
+                  </h2>
+                  <button
+                    onClick={() => setShowAddPatient((v) => !v)}
+                    disabled={!online}
+                    className="cursor-pointer rounded-lg bg-[#0891b2] px-3 py-1.5 text-sm text-white transition-colors hover:bg-[#0e7490] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {showAddPatient ? 'Close' : '+ Add Patient'}
+                  </button>
+                </div>
+
+                {queueLoading
+                  ? <LoadingSpinner />
+                  : <QueuePanel
+                      queue={queue}
+                      sessionId={session.id}
+                      clinicId={clinic?.id ?? ''}
+                      staffRole={staff?.role ?? 'receptionist'}
+                      online={online}
+                      onUpdate={refetchQueue}
+                    />
+                }
               </div>
 
-              {queueLoading
-                ? <LoadingSpinner />
-                : <QueuePanel
-                    queue={queue}
+              {/* Add patient panel — full-screen overlay on mobile, side panel on desktop */}
+              {showAddPatient && (
+                <div className="fixed inset-0 z-40 overflow-y-auto bg-white md:relative md:inset-auto md:z-auto md:w-2/5 md:border-l md:border-gray-200">
+                  <AddPatientPanel
                     sessionId={session.id}
                     clinicId={clinic?.id ?? ''}
-                    staffRole={staff?.role ?? 'receptionist'}
-                    online={online}
-                    onUpdate={refetchQueue}
+                    onAdded={() => { refetchQueue(); setShowAddPatient(false) }}
+                    onClose={() => setShowAddPatient(false)}
                   />
-              }
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center p-8">
+              <p className="text-xl font-['Figtree'] font-semibold text-[#164e63]">No active session</p>
+              <p className="text-sm text-[#0e7490]">Open a session to start accepting patients.</p>
             </div>
+          )}
+        </div>
 
-            {/* Add patient panel — full-screen overlay on mobile, side panel on desktop */}
-            {showAddPatient && (
-              <div className="fixed inset-0 z-40 overflow-y-auto bg-white md:relative md:inset-auto md:z-auto md:w-2/5 md:border-l md:border-gray-200">
-                <AddPatientPanel
-                  sessionId={session.id}
-                  clinicId={clinic?.id ?? ''}
-                  onAdded={() => { refetchQueue(); setShowAddPatient(false) }}
-                  onClose={() => setShowAddPatient(false)}
-                />
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center p-8">
-            <p className="text-xl font-['Figtree'] font-semibold text-[#164e63]">No active session</p>
-            <p className="text-sm text-[#0e7490]">Open a session to start accepting patients.</p>
+        {/* Appointments panel — full-screen overlay on mobile, side panel on desktop */}
+        {showAppointments && (
+          <div className="fixed inset-0 z-30 overflow-y-auto bg-white md:relative md:inset-auto md:z-auto md:flex md:w-2/5 md:flex-col md:border-l md:border-gray-200">
+            <AppointmentPanel
+              clinicId={clinic?.id ?? ''}
+              doctorId={session?.doctor_id ?? ''}
+              online={online}
+            />
           </div>
         )}
       </main>

@@ -343,6 +343,23 @@ export interface Prescription {
   created_at:    string
 }
 
+/** Appointment row */
+export interface Appointment {
+  id:                string
+  clinic_id:         string
+  patient_id:        string
+  doctor_id:         string
+  scheduled_at:      string
+  duration_mins:     number
+  appointment_type:  string   // 'regular' | 'follow_up' | 'urgent'
+  status:            string   // 'booked' | 'completed' | 'cancelled' | 'no_show'
+  notes:             string | null
+  version:           number
+  created_at:        string
+  updated_at:        string
+  patient?:          Pick<Patient, 'id' | 'name' | 'mobile'>
+}
+
 /** Visit row from the visits table */
 export interface Visit {
   id:                 string
