@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
-import type { QueueEntry } from '../../../types'
+import type { Visit } from '../../../types'
 
 interface Props {
   patientId: string
@@ -13,49 +13,28 @@ interface Thumbnail {
   publicUrl: string
 }
 
-interface ParsedNotes {
-  chiefComplaint:    string
-  quickNotes:        string
-  prescriptionItems?: Array<{ drug_name: string; dosage: string; duration_days: number; timing?: string }>
-}
-
-function parseNotes(raw: string): ParsedNotes | null {
-  try {
-    const parsed = JSON.parse(raw)
-    if (parsed && typeof parsed.chiefComplaint === 'string') return parsed as ParsedNotes
-  } catch { /* plain text */ }
-  return null
-}
-
-function getPreview(raw: string): string {
-  const parsed = parseNotes(raw)
-  const text = parsed ? [parsed.chiefComplaint, parsed.quickNotes].filter(Boolean).join(' ') : raw
-  return text.length > 60 ? text.slice(0, 60) + '…' : text
-}
-
 export function VisitHistory({ patientId, clinicId }: Props) {
-  const [visits,    setVisits]    = useState<QueueEntry[]>([])
+  const [visits,    setVisits]    = useState<Visit[]>([])
   const [expanded,  setExpanded]  = useState<string | null>(null)
   const [thumbsMap, setThumbsMap] = useState<Record<string, Thumbnail[]>>({})
   const [loading,   setLoading]   = useState(true)
 
   useEffect(() => {
     supabase
-      .from('queue_entries')
-      .select('id, created_at, notes, status, token_number, token_prefix')
+      .from('visits')
+      .select('*, prescriptions(*)')
       .eq('patient_id', patientId)
       .eq('clinic_id', clinicId)
-      .eq('status', 'COMPLETED')
       .order('created_at', { ascending: false })
       .limit(20)
       .then(({ data }) => {
-        setVisits((data ?? []) as QueueEntry[])
+        setVisits((data ?? []) as Visit[])
         setLoading(false)
       })
   }, [patientId, clinicId])
 
   async function loadAttachments(queueEntryId: string) {
-    if (thumbsMap[queueEntryId]) return
+    if (thumbsMap[queueEntryId] !== undefined) return
 
     const { data, error } = await supabase
       .from('queue_attachments')
@@ -78,10 +57,10 @@ export function VisitHistory({ patientId, clinicId }: Props) {
     setThumbsMap((prev) => ({ ...prev, [queueEntryId]: thumbnails }))
   }
 
-  function handleExpand(visitId: string) {
+  function handleExpand(visitId: string, queueEntryId: string | null) {
     const next = expanded === visitId ? null : visitId
     setExpanded(next)
-    if (next) loadAttachments(next)
+    if (next && queueEntryId) loadAttachments(queueEntryId)
   }
 
   if (loading) return (
@@ -111,12 +90,14 @@ export function VisitHistory({ patientId, clinicId }: Props) {
       {/* Timeline */}
       <div className="relative flex flex-col gap-1">
         {visits.map((v, idx) => {
-          const date = new Date(v.created_at)
-          const day  = date.toLocaleDateString('en-IN', { day: '2-digit' })
-          const mon  = date.toLocaleDateString('en-IN', { month: 'short' })
-          const yr   = date.getFullYear()
+          const date   = new Date(v.created_at)
+          const day    = date.toLocaleDateString('en-IN', { day: '2-digit' })
+          const mon    = date.toLocaleDateString('en-IN', { month: 'short' })
+          const yr     = date.getFullYear()
           const isOpen = expanded === v.id
-          const parsed = v.notes ? parseNotes(v.notes) : null
+          const rxItems = v.prescriptions ?? []
+          const preview = [v.chief_complaint, v.examination_notes].filter(Boolean).join(' ')
+          const previewText = preview.length > 60 ? preview.slice(0, 60) + '…' : preview
 
           return (
             <div key={v.id} className="relative flex gap-3">
@@ -125,84 +106,86 @@ export function VisitHistory({ patientId, clinicId }: Props) {
                 <div
                   className="mt-3 h-2.5 w-2.5 shrink-0 rounded-full border-2"
                   style={{
-                    borderColor: idx === 0 ? '#006a6a' : '#d9e4e8',
+                    borderColor:     idx === 0 ? '#006a6a' : '#d9e4e8',
                     backgroundColor: idx === 0 ? '#006a6a' : '#ffffff',
                   }}
                 />
                 {idx < visits.length - 1 && (
-                  <div className="w-px flex-1 mt-1" style={{ backgroundColor: '#e8eff1', minHeight: '20px' }} />
+                  <div className="mt-1 w-px flex-1" style={{ backgroundColor: '#e8eff1', minHeight: '20px' }} />
                 )}
               </div>
 
               {/* Visit card */}
               <button
                 type="button"
-                onClick={() => handleExpand(v.id)}
+                onClick={() => handleExpand(v.id, v.queue_entry_id)}
                 className="mb-3 flex-1 cursor-pointer rounded-xl p-3 text-left transition-all"
                 style={{
                   backgroundColor: isOpen ? '#e0f4f4' : '#ffffff',
                   boxShadow: '0 1px 4px rgba(42,52,55,0.06)',
                 }}
               >
-                {/* Date + token */}
-                <div className="flex items-center justify-between gap-1">
-                  <p className="text-xs font-semibold" style={{ color: '#006a6a', fontFamily: 'Manrope, sans-serif' }}>
-                    {mon} {day}, {yr}
-                  </p>
-                  <span className="rounded-md px-1.5 py-0.5 text-[10px] font-medium"
-                    style={{ backgroundColor: '#f0f4f6', color: '#566164' }}>
-                    {v.token_prefix}-{v.token_number}
-                  </span>
-                </div>
+                {/* Date */}
+                <p className="text-xs font-semibold" style={{ color: '#006a6a', fontFamily: 'Manrope, sans-serif' }}>
+                  {mon} {day}, {yr}
+                </p>
 
                 {/* Preview */}
-                {!isOpen && v.notes && (
+                {!isOpen && previewText && (
                   <p className="mt-1 text-xs leading-relaxed" style={{ color: '#566164' }}>
-                    {getPreview(v.notes)}
+                    {previewText}
                   </p>
                 )}
 
-                {/* Expanded */}
-                {isOpen && v.notes && (
+                {/* Expanded detail */}
+                {isOpen && (
                   <div className="mt-2 text-xs leading-relaxed" style={{ color: '#2a3437' }}>
-                    {parsed ? (
-                      <>
-                        {parsed.chiefComplaint && (
-                          <p><span className="font-semibold" style={{ color: '#006a6a' }}>Complaint: </span>{parsed.chiefComplaint}</p>
+                    {/* Vitals row */}
+                    {(v.bp_systolic || v.pulse || v.temperature || v.spo2) && (
+                      <div className="mb-2 flex flex-wrap gap-x-3 gap-y-0.5" style={{ color: '#566164' }}>
+                        {v.bp_systolic && v.bp_diastolic && (
+                          <span>BP <strong>{v.bp_systolic}/{v.bp_diastolic}</strong></span>
                         )}
-                        {parsed.quickNotes && (
-                          <p className="mt-1"><span className="font-semibold" style={{ color: '#006a6a' }}>Notes: </span>{parsed.quickNotes}</p>
-                        )}
-                        {parsed.prescriptionItems && parsed.prescriptionItems.length > 0 && (
-                          <div className="mt-2">
-                            <p className="mb-1 font-semibold" style={{ color: '#006a6a' }}>Rx:</p>
-                            <div className="flex flex-wrap gap-1.5">
-                              {parsed.prescriptionItems.map((item, i) => (
-                                <span key={i}
-                                  className="inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[10px] font-bold"
-                                  style={{ backgroundColor: '#006a6a', color: '#fff' }}>
-                                  {item.drug_name}
-                                  <span className="rounded px-1 font-normal"
-                                    style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
-                                    {item.dosage} · {item.duration_days}d
-                                  </span>
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <p>{v.notes}</p>
+                        {v.pulse      && <span>HR <strong>{v.pulse}</strong></span>}
+                        {v.temperature && <span>T <strong>{v.temperature}°F</strong></span>}
+                        {v.spo2       && <span>SpO₂ <strong>{v.spo2}%</strong></span>}
+                      </div>
                     )}
 
-                    {/* Attachments */}
-                    {thumbsMap[v.id] === undefined && (
+                    {v.chief_complaint && (
+                      <p><span className="font-semibold" style={{ color: '#006a6a' }}>Complaint: </span>{v.chief_complaint}</p>
+                    )}
+                    {v.examination_notes && (
+                      <p className="mt-1"><span className="font-semibold" style={{ color: '#006a6a' }}>Notes: </span>{v.examination_notes}</p>
+                    )}
+
+                    {/* Prescription pills */}
+                    {rxItems.length > 0 && (
+                      <div className="mt-2">
+                        <p className="mb-1 font-semibold" style={{ color: '#006a6a' }}>Rx:</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {rxItems.map((item) => (
+                            <span key={item.id}
+                              className="inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[10px] font-bold"
+                              style={{ backgroundColor: '#006a6a', color: '#fff' }}>
+                              {item.drug_name}
+                              <span className="rounded px-1 font-normal"
+                                style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
+                                {item.dosage} · {item.duration_days}d
+                              </span>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Attachments (linked by queue_entry_id) */}
+                    {v.queue_entry_id && thumbsMap[v.queue_entry_id] === undefined && (
                       <p className="mt-1" style={{ color: '#a9b4b7' }}>Loading attachments…</p>
                     )}
-                    {thumbsMap[v.id]?.length > 0 && (
+                    {v.queue_entry_id && (thumbsMap[v.queue_entry_id]?.length ?? 0) > 0 && (
                       <div className="mt-2 flex flex-wrap gap-1.5">
-                        {thumbsMap[v.id].map((t) => (
+                        {thumbsMap[v.queue_entry_id].map((t) => (
                           <a key={t.id} href={t.publicUrl} target="_blank" rel="noopener noreferrer"
                             aria-label="Open scanned prescription">
                             <img src={t.publicUrl} alt="Scanned prescription"
@@ -212,10 +195,16 @@ export function VisitHistory({ patientId, clinicId }: Props) {
                         ))}
                       </div>
                     )}
+
+                    {!v.chief_complaint && !v.examination_notes && rxItems.length === 0 && (
+                      <p className="italic" style={{ color: '#a9b4b7' }}>No details recorded</p>
+                    )}
                   </div>
                 )}
 
-                {!v.notes && <p className="mt-1 text-xs italic" style={{ color: '#a9b4b7' }}>No notes recorded</p>}
+                {!isOpen && !previewText && (
+                  <p className="mt-1 text-xs italic" style={{ color: '#a9b4b7' }}>No notes recorded</p>
+                )}
               </button>
             </div>
           )

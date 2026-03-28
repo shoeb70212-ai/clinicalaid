@@ -321,13 +321,49 @@ export interface AuthState {
   loading:      boolean
 }
 
-/** Single item in a V1 prescription */
+/** Single item in a prescription (used in draft and DB) */
 export interface PrescriptionItem {
   drug_name:     string
   generic_name?: string
   dosage:        string    // e.g. '1-0-1'
   duration_days: number
   timing?:       string    // 'after_food' | 'before_food' | 'empty_stomach' | 'sos'
+}
+
+/** Prescription row from the prescriptions table */
+export interface Prescription {
+  id:            string
+  visit_id:      string
+  clinic_id:     string
+  drug_name:     string
+  generic_name:  string | null
+  dosage:        string
+  duration_days: number
+  timing:        string | null
+  created_at:    string
+}
+
+/** Visit row from the visits table */
+export interface Visit {
+  id:                 string
+  clinic_id:          string
+  patient_id:         string
+  queue_entry_id:     string | null
+  doctor_id:          string
+  visit_date:         string
+  chief_complaint:    string | null
+  examination_notes:  string | null
+  diagnosis:          string | null
+  icd10_code:         string | null
+  bp_systolic:        number | null
+  bp_diastolic:       number | null
+  pulse:              number | null
+  temperature:        number | null
+  spo2:               number | null
+  weight:             number | null
+  follow_up_date:     string | null
+  created_at:         string
+  prescriptions?:     Prescription[]
 }
 
 /** Consultation draft saved to localStorage */

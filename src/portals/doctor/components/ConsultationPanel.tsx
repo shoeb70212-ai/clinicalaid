@@ -75,14 +75,31 @@ export function ConsultationPanel({ entry, clinicId, doctorId, staffId, online, 
     const result = await updateQueueStatus(entry.id, entry.version, to)
 
     if (to === 'COMPLETED' && result.success && result.data) {
+      // Save structured visit record to the visits + prescriptions tables
+      await supabase.rpc('save_visit', {
+        p_clinic_id:         clinicId,
+        p_patient_id:        entry.patient_id,
+        p_queue_entry_id:    entry.id,
+        p_doctor_id:         doctorId,
+        p_chief_complaint:   draft.chiefComplaint,
+        p_examination_notes: draft.quickNotes,
+        p_bp_systolic:       parseInt(draft.vitals.bp_systolic)  || null,
+        p_bp_diastolic:      parseInt(draft.vitals.bp_diastolic) || null,
+        p_pulse:             parseInt(draft.vitals.pulse)        || null,
+        p_temperature:       parseFloat(draft.vitals.temperature) || null,
+        p_spo2:              parseInt(draft.vitals.spo2)         || null,
+        p_weight:            parseFloat(draft.vitals.weight)     || null,
+        p_prescriptions:     JSON.stringify(draft.prescriptionItems ?? []),
+      })
+
+      // Also write lightweight summary to queue_entries.notes for backward compat
       const notes = JSON.stringify({
         chiefComplaint:    draft.chiefComplaint,
         quickNotes:        draft.quickNotes,
         prescriptionItems: draft.prescriptionItems ?? [],
       })
       const notesResult = await updateQueueNotes(entry.id, result.data.version, notes)
-      // Only clear draft if notes were actually persisted — on OCC conflict the
-      // draft stays in localStorage so the doctor can recover their clinical notes.
+      // Only clear draft if notes were persisted — on OCC conflict draft stays for recovery
       if (notesResult.success) {
         clearDraft(staffId, entry.id)
       }
