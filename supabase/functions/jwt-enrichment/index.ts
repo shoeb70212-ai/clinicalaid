@@ -48,8 +48,8 @@ Deno.serve(async (req: Request) => {
       console.log('[jwt-enrichment] No staff record for user:', user_id, '- new user going to onboarding')
     }
 
-    // Return claims at ROOT level, not wrapped in "claims" object.
-    // Supabase merges these directly into app_metadata.
+    // Supabase HTTPS hooks require response wrapped in {"claims": {...}}
+    // Merge original claims with custom fields.
     const customClaims = staffRecord ? {
       clinic_id:     staffRecord.clinic_id,
       staff_id:      staffRecord.id,
@@ -57,10 +57,12 @@ Deno.serve(async (req: Request) => {
       totp_required: staffRecord.totp_required ?? true,
     } : {}
 
+    const outputClaims = { ...claims, ...customClaims }
+
     console.log('[jwt-enrichment] Returning claims:', Object.keys(customClaims))
 
     return new Response(
-      JSON.stringify(customClaims),
+      JSON.stringify({ claims: outputClaims }),
       { headers: { 'Content-Type': 'application/json' } }
     )
   } catch (err) {
