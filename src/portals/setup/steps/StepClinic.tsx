@@ -70,8 +70,9 @@ export function StepClinic({ data, update, onNext }: Props) {
     }
 
     // Create staff record for the doctor
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.user) {
+    // Use data.staffId set by SetupPortal from OAuth session — avoids re-fetching session
+    const userId = data.staffId
+    if (!userId) {
       setError('Session lost — please sign in again.')
       setLoading(false)
       return
@@ -81,10 +82,10 @@ export function StepClinic({ data, update, onNext }: Props) {
       .from('staff')
       .insert({
         clinic_id:     clinicRow.id,
-        user_id:       session.user.id,
-        name:          data.doctorName ?? session.user.user_metadata?.full_name ?? '',
-        full_name:     data.doctorName ?? session.user.user_metadata?.full_name ?? '',
-        email:         data.email ?? session.user.email ?? '',
+        user_id:       userId,
+        name:          data.doctorName ?? '',
+        full_name:     data.doctorName ?? '',
+        email:         data.email ?? '',
         role:          'doctor',
         is_active:     true,
         totp_required: false,
