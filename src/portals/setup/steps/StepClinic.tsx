@@ -69,6 +69,36 @@ export function StepClinic({ data, update, onNext }: Props) {
       return
     }
 
+    // Create staff record for the doctor
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) {
+      setError('Session lost — please sign in again.')
+      setLoading(false)
+      return
+    }
+
+    const { error: staffError } = await supabase
+      .from('staff')
+      .insert({
+        clinic_id:     clinicRow.id,
+        user_id:       session.user.id,
+        name:          data.doctorName ?? session.user.user_metadata?.full_name ?? '',
+        full_name:     data.doctorName ?? session.user.user_metadata?.full_name ?? '',
+        email:         data.email ?? session.user.email ?? '',
+        role:          'doctor',
+        is_active:     true,
+        totp_required: false,
+        reg_number:    data.regNumber ?? '',
+        qualification: data.qualification ?? '',
+        specialty:     data.specialty ?? '',
+      })
+
+    if (staffError) {
+      setError(`Failed to create staff record: ${staffError.message}`)
+      setLoading(false)
+      return
+    }
+
     // Upload logo if provided
     if (data.logoFile && clinicRow) {
       const ext  = data.logoFile.type.split('/')[1]
