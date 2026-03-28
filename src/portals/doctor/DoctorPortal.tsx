@@ -41,8 +41,6 @@ export default function DoctorPortal() {
     return () => { document.body.style.overflow = '' }
   }, [sidebarOpen])
 
-  if (sessionLoading) return <LoadingSpinner fullScreen />
-
   const inConsultation = useMemo(
     () => queue.find((e) => e.status === 'IN_CONSULTATION') ?? null,
     [queue],
@@ -50,6 +48,8 @@ export default function DoctorPortal() {
 
   // Auto-select in-consultation patient
   const displayEntry = activeEntry ?? inConsultation
+
+  if (sessionLoading) return <LoadingSpinner fullScreen />
 
   return (
     <div className="flex h-screen flex-col bg-[#ecfeff]">
