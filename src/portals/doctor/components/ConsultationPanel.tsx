@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { AlertTriangle, ShieldCheck, ShieldX } from 'lucide-react'
+import { AlertTriangle, ShieldCheck, ShieldX, Droplets } from 'lucide-react'
 import { updateQueueStatus, updateQueueNotes, verifyIdentity } from '../../../lib/occ'
 import { isValidTransition } from '../../../lib/transitions'
 import { saveDraft, loadDraft, clearDraft } from '../../../lib/draftSave'
@@ -36,7 +36,6 @@ export function ConsultationPanel({ entry, clinicId, doctorId: _doctorId, staffI
   const [saveFailed,     setSaveFailed]     = useState(false)
   const [loading,        setLoading]        = useState(false)
 
-  // Auto-save on every keystroke (debounced via useEffect)
   useEffect(() => {
     const t = setTimeout(() => {
       const { saved } = saveDraft(staffId, entry.id, draft)
@@ -57,9 +56,6 @@ export function ConsultationPanel({ entry, clinicId, doctorId: _doctorId, staffI
     const result = await updateQueueStatus(entry.id, entry.version, to)
 
     if (to === 'COMPLETED' && result.success && result.data) {
-      // Write notes via OCC using the updated version from the status transition.
-      // If another write raced between status change and notes write, the conflict
-      // is safe — draft is still recoverable from localStorage.
       const notes = JSON.stringify({
         chiefComplaint: draft.chiefComplaint,
         quickNotes:     draft.quickNotes,
@@ -90,46 +86,52 @@ export function ConsultationPanel({ entry, clinicId, doctorId: _doctorId, staffI
 
   const canStart = isValidTransition(entry.status, 'IN_CONSULTATION', 'doctor', entry.identity_verified)
   const inputsDisabled = !entry.identity_verified || entry.status === 'CALLED'
-
   const age = calcAge(patient.dob ?? null)
 
   return (
-    <div className="flex h-full flex-col bg-white">
+    <div className="flex h-full flex-col" style={{ backgroundColor: '#f8fafb' }}>
       {/* Draft restored banner */}
       {draftRestored && (
-        <div role="status" className="bg-amber-50 px-4 py-2 text-sm text-amber-700">
+        <div role="status" className="px-4 py-2 text-xs" style={{ backgroundColor: '#fffbeb', color: '#92400e' }}>
           Unsaved notes from previous session restored.
         </div>
       )}
 
-      {/* Auto-save failed banner — browser storage full */}
+      {/* Auto-save failed banner */}
       {saveFailed && (
-        <div role="alert" className="bg-red-50 px-4 py-2 text-sm text-red-700">
-          Auto-save failed — browser storage is full. Notes may not be saved. Clear browser data or use a different device.
+        <div role="alert" className="px-4 py-2 text-xs" style={{ backgroundColor: '#fef2f2', color: '#991b1b' }}>
+          Auto-save failed — browser storage is full. Notes may not be saved.
         </div>
       )}
 
       {/* Identity verification banner (amber lock) */}
       {!entry.identity_verified && (
-        <div className="border-b border-amber-200 bg-amber-50 px-4 py-3">
+        <div className="px-4 py-3" style={{ backgroundColor: '#fffbeb', borderBottom: '1px solid #fde68a' }}>
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="flex items-center gap-2 text-amber-700">
+              <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: '#92400e' }}>
                 <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
-                <span className="font-semibold">Unverified Check-In</span>
+                Unverified Check-In
               </div>
-              <p className="mt-1 text-xs text-amber-600">
-                Age: {age ?? '—'} · Gender: {patient.gender ?? '—'}
+              <p className="mt-0.5 text-xs" style={{ color: '#b45309' }}>
+                Age: {age ?? '—'} · Gender: {patient.gender ?? '—'} · Verify before starting consultation.
               </p>
-              <p className="text-xs text-amber-600">Verify patient identity before starting consultation.</p>
             </div>
             <div className="flex shrink-0 gap-2">
-              <button onClick={handleConfirmIdentity} disabled={loading || !online}
-                className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-60">
+              <button
+                onClick={handleConfirmIdentity}
+                disabled={loading || !online}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-colors disabled:opacity-60"
+                style={{ backgroundColor: '#006a6a' }}
+              >
                 <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" /> Confirm Identity
               </button>
-              <button onClick={handleImposter} disabled={loading || !online}
-                className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-60">
+              <button
+                onClick={handleImposter}
+                disabled={loading || !online}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-60"
+                style={{ borderColor: '#fca5a5', color: '#991b1b', backgroundColor: '#fff' }}
+              >
                 <ShieldX className="h-3.5 w-3.5" aria-hidden="true" /> Mismatch
               </button>
             </div>
@@ -137,45 +139,96 @@ export function ConsultationPanel({ entry, clinicId, doctorId: _doctorId, staffI
         </div>
       )}
 
-      {/* Three-column layout (desktop) */}
+      {/* Three-column layout */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Col 1: Context anchor */}
-        <div className="hidden w-48 shrink-0 flex-col gap-3 overflow-y-auto border-r border-gray-100 p-3 md:flex">
+
+        {/* Col 1: Patient context card */}
+        <div
+          className="hidden w-52 shrink-0 flex-col gap-3 overflow-y-auto p-4 md:flex"
+          style={{ backgroundColor: '#ffffff', borderRight: '1px solid rgba(169,180,183,0.15)' }}
+        >
+          {/* Token chip */}
+          <div className="flex items-center gap-2">
+            <span
+              className="rounded-lg px-2.5 py-1 text-xs font-bold tabular-nums"
+              style={{ backgroundColor: '#e0f4f4', color: '#006a6a' }}
+            >
+              {entry.token_prefix}-{entry.token_number}
+            </span>
+            {entry.status === 'IN_CONSULTATION' && (
+              <span
+                className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                style={{ backgroundColor: '#006a6a', color: '#fff' }}
+              >
+                Active
+              </span>
+            )}
+          </div>
+
+          {/* Patient name */}
           <div>
-            <p className="font-['Figtree'] text-base font-bold text-[#164e63]">{patient.name}</p>
-            <p className="text-xs text-[#0e7490]">
-              {age != null ? `${age}${patient.gender === 'male' ? 'M' : patient.gender === 'female' ? 'F' : ''}` : ''}
-              {' · '}Token {entry.token_prefix}-{entry.token_number}
+            <p className="text-base font-bold leading-tight" style={{ fontFamily: 'Manrope, sans-serif', color: '#2a3437' }}>
+              {patient.name}
             </p>
-            <p className="text-xs text-[#0e7490]">{patient.mobile}</p>
+            <p className="mt-0.5 text-xs" style={{ color: '#566164' }}>
+              {age != null ? `${age} yrs` : ''}
+              {age != null && patient.gender ? ' · ' : ''}
+              {patient.gender === 'male' ? 'Male' : patient.gender === 'female' ? 'Female' : patient.gender ?? ''}
+            </p>
+            {patient.mobile && (
+              <p className="mt-0.5 text-xs" style={{ color: '#566164' }}>{patient.mobile}</p>
+            )}
           </div>
 
           {/* Blood group */}
           {patient.blood_group && (
-            <div className="rounded-lg bg-red-50 px-2 py-1 text-xs font-bold text-red-700">
-              {patient.blood_group}
+            <div
+              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5"
+              style={{ backgroundColor: '#fef2f2' }}
+            >
+              <Droplets className="h-3.5 w-3.5 shrink-0" style={{ color: '#dc2626' }} aria-hidden="true" />
+              <span className="text-xs font-bold" style={{ color: '#dc2626' }}>{patient.blood_group}</span>
             </div>
           )}
+
         </div>
 
         {/* Col 2: Active encounter */}
         <div className="flex flex-1 flex-col overflow-hidden">
-          {/* Tabs (mobile) */}
-          <div className="flex border-b border-gray-100 md:hidden">
+
+          {/* Mobile tabs */}
+          <div className="flex md:hidden" style={{ borderBottom: '1px solid rgba(169,180,183,0.2)' }}>
             {(['notes', 'history', 'vitals'] as const).map((t) => (
-              <button key={t} type="button" onClick={() => setTab(t)}
-                className={`flex-1 cursor-pointer py-2 text-xs font-medium capitalize transition-colors ${tab === t ? 'border-b-2 border-[#0891b2] text-[#0891b2]' : 'text-gray-400'}`}>
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTab(t)}
+                className="flex-1 cursor-pointer py-2.5 text-xs font-semibold capitalize transition-colors"
+                style={{
+                  borderBottom: tab === t ? '2px solid #006a6a' : '2px solid transparent',
+                  color: tab === t ? '#006a6a' : '#566164',
+                }}
+              >
                 {t}
               </button>
             ))}
           </div>
 
           <div className="flex flex-1 overflow-hidden">
-            {/* Notes (always visible on desktop) */}
+            {/* Notes */}
             <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
               <div className={tab !== 'notes' ? 'hidden md:flex flex-col gap-3' : 'flex flex-col gap-3'}>
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="chiefComplaint" className="text-xs font-medium text-[#0e7490] uppercase tracking-wide">
+
+                {/* Chief Complaint */}
+                <div
+                  className="rounded-xl p-4"
+                  style={{ backgroundColor: '#ffffff', boxShadow: '0 2px 8px rgba(42,52,55,0.05)' }}
+                >
+                  <label
+                    htmlFor="chiefComplaint"
+                    className="mb-2 block text-xs font-semibold uppercase tracking-widest"
+                    style={{ color: '#566164' }}
+                  >
                     Chief Complaint
                   </label>
                   <textarea
@@ -184,13 +237,29 @@ export function ConsultationPanel({ entry, clinicId, doctorId: _doctorId, staffI
                     rows={3}
                     value={draft.chiefComplaint}
                     onChange={(e) => updateDraft({ chiefComplaint: e.target.value })}
-                    className="resize-none rounded-lg border border-gray-200 p-2 text-sm text-[#164e63] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0891b2] disabled:bg-gray-50"
-                    placeholder="Patient's chief complaint…"
+                    className="w-full resize-none rounded-lg p-2.5 text-sm transition-colors disabled:opacity-50"
+                    style={{
+                      backgroundColor: '#f0f4f6',
+                      color: '#2a3437',
+                      outline: 'none',
+                      border: 'none',
+                      fontFamily: 'Inter, sans-serif',
+                    }}
+                    placeholder="Enter patient's chief complaint…"
                   />
                 </div>
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="quickNotes" className="text-xs font-medium text-[#0e7490] uppercase tracking-wide">
-                    Quick Notes
+
+                {/* Clinical Notes */}
+                <div
+                  className="rounded-xl p-4"
+                  style={{ backgroundColor: '#ffffff', boxShadow: '0 2px 8px rgba(42,52,55,0.05)' }}
+                >
+                  <label
+                    htmlFor="quickNotes"
+                    className="mb-2 block text-xs font-semibold uppercase tracking-widest"
+                    style={{ color: '#566164' }}
+                  >
+                    Clinical Notes
                   </label>
                   <textarea
                     id="quickNotes"
@@ -198,12 +267,19 @@ export function ConsultationPanel({ entry, clinicId, doctorId: _doctorId, staffI
                     rows={5}
                     value={draft.quickNotes}
                     onChange={(e) => updateDraft({ quickNotes: e.target.value })}
-                    className="resize-none rounded-lg border border-gray-200 p-2 text-sm text-[#164e63] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0891b2] disabled:bg-gray-50"
-                    placeholder="Notes, observations, treatment plan…"
+                    className="w-full resize-none rounded-lg p-2.5 text-sm transition-colors disabled:opacity-50"
+                    style={{
+                      backgroundColor: '#f0f4f6',
+                      color: '#2a3437',
+                      outline: 'none',
+                      border: 'none',
+                      fontFamily: 'Inter, sans-serif',
+                    }}
+                    placeholder="Observations, findings, treatment plan…"
                   />
                 </div>
 
-                {/* Paper prescription scan */}
+                {/* Scan attachment */}
                 <ScanAttachment
                   clinicId={clinicId}
                   queueEntryId={entry.id}
@@ -213,48 +289,69 @@ export function ConsultationPanel({ entry, clinicId, doctorId: _doctorId, staffI
                 />
               </div>
 
-              {/* Vitals tab (mobile) or inline (desktop) */}
-              {(tab === 'vitals') && (
-                <VitalsGrid vitals={draft.vitals} disabled={inputsDisabled}
-                  onChange={(v) => updateDraft({ vitals: v })} />
+              {/* Vitals tab (mobile) */}
+              {tab === 'vitals' && (
+                <VitalsGrid
+                  vitals={draft.vitals}
+                  disabled={inputsDisabled}
+                  onChange={(v) => updateDraft({ vitals: v })}
+                />
               )}
 
               {/* History tab (mobile) */}
-              {(tab === 'history') && (
+              {tab === 'history' && (
                 <VisitHistory patientId={patient.id} clinicId={clinicId} />
               )}
             </div>
 
-            {/* Col 3: Visit history (desktop only) */}
-            <div className="hidden w-52 shrink-0 overflow-y-auto border-l border-gray-100 p-3 md:block">
+            {/* Col 3: Visit history (desktop) */}
+            <div
+              className="hidden w-56 shrink-0 overflow-y-auto p-3 md:block"
+              style={{ borderLeft: '1px solid rgba(169,180,183,0.15)', backgroundColor: '#f8fafb' }}
+            >
               <VisitHistory patientId={patient.id} clinicId={clinicId} />
             </div>
           </div>
 
           {/* Sticky action footer */}
-          <div className="flex gap-2 border-t border-gray-100 p-3">
+          <div
+            className="flex gap-2 p-3"
+            style={{ borderTop: '1px solid rgba(169,180,183,0.15)', backgroundColor: '#ffffff' }}
+          >
             {canStart && (
-              <button onClick={() => handleTransition('IN_CONSULTATION')}
+              <button
+                onClick={() => handleTransition('IN_CONSULTATION')}
                 disabled={loading || !online}
-                className="cursor-pointer rounded-lg bg-[#0891b2] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0e7490] disabled:opacity-60">
+                className="cursor-pointer rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all disabled:opacity-60"
+                style={{ background: 'linear-gradient(135deg, #006a6a, #005c5c)' }}
+              >
                 Start Consultation
               </button>
             )}
             {entry.status === 'IN_CONSULTATION' && (
               <>
-                <button onClick={() => handleTransition('COMPLETED')}
+                <button
+                  onClick={() => handleTransition('COMPLETED')}
                   disabled={loading || !online}
-                  className="flex-1 cursor-pointer rounded-lg bg-[#059669] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#047857] disabled:opacity-60">
-                  Mark Complete
+                  className="flex-1 cursor-pointer rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-all disabled:opacity-60"
+                  style={{ background: 'linear-gradient(135deg, #006a6a, #005c5c)' }}
+                >
+                  End Consultation
                 </button>
-                <button onClick={() => handleTransition('SKIPPED')}
+                <button
+                  onClick={() => handleTransition('SKIPPED')}
                   disabled={loading || !online}
-                  className="cursor-pointer rounded-lg border border-gray-200 px-3 py-2 text-sm text-[#164e63] transition-colors hover:bg-gray-50 disabled:opacity-60">
+                  className="cursor-pointer rounded-xl px-3 py-2.5 text-sm font-medium transition-colors disabled:opacity-60"
+                  style={{ backgroundColor: '#f0f4f6', color: '#566164' }}
+                >
                   Skip
                 </button>
-                <button onClick={() => handleTransition('NO_SHOW')}
+                <button
+                  onClick={() => handleTransition('NO_SHOW')}
                   disabled={loading || !online}
-                  className="cursor-pointer rounded-lg border border-gray-200 px-3 py-2 text-sm text-[#164e63] transition-colors hover:bg-gray-50 disabled:opacity-60">
+                  className="cursor-pointer rounded-xl px-3 py-2.5 text-sm font-medium transition-colors disabled:opacity-60"
+                  style={{ backgroundColor: '#f0f4f6', color: '#566164' }}
+                >
                   No Show
                 </button>
               </>
