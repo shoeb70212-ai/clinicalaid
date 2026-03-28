@@ -19,7 +19,7 @@ export function OfflineBanner() {
       <WifiOff className="h-4 w-4 shrink-0" aria-hidden="true" />
       <span>
         Connection lost — queue paused to prevent data conflicts.
-        You can still read the current patient's profile.
+        You can still read the current patient&apos;s profile.
         All action buttons will re-enable when connection returns.
       </span>
     </div>

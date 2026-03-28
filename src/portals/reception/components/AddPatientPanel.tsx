@@ -155,12 +155,18 @@ export function AddPatientPanel({ sessionId, clinicId, onAdded, onClose }: Props
       .from('clinics').select('config').eq('id', clinicId).single()
     const consentVersion = clinicData?.config?.consent_version ?? 'v1.0'
 
-    await supabase.from('patient_consents').insert({
+    const { error: consentError } = await supabase.from('patient_consents').insert({
       patient_id:      selectedId,
       clinic_id:       clinicId,
       consent_text:    consentText,
       consent_version: consentVersion,
     })
+
+    if (consentError) {
+      setError(`Failed to record consent: ${consentError.message}`)
+      setLoading(false)
+      return
+    }
 
     await addToQueue(selectedId)
     setLoading(false)

@@ -80,8 +80,12 @@ export function ConsultationPanel({ entry, clinicId, doctorId, staffId, online, 
         quickNotes:        draft.quickNotes,
         prescriptionItems: draft.prescriptionItems ?? [],
       })
-      await updateQueueNotes(entry.id, result.data.version, notes)
-      clearDraft(staffId, entry.id)
+      const notesResult = await updateQueueNotes(entry.id, result.data.version, notes)
+      // Only clear draft if notes were actually persisted — on OCC conflict the
+      // draft stays in localStorage so the doctor can recover their clinical notes.
+      if (notesResult.success) {
+        clearDraft(staffId, entry.id)
+      }
     }
 
     setLoading(false)

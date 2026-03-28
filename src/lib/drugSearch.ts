@@ -125,19 +125,12 @@ export async function recordDrugUsage(
   duration: number | null,
   timing: string | null,
 ): Promise<void> {
-  await supabase.from('doctor_drug_preferences').upsert(
-    {
-      clinic_id:        clinicId,
-      doctor_id:        doctorId,
-      drug_name:        drugName,
-      usage_count:      1,
-      default_dosage:   dosage,
-      default_duration: duration,
-      default_timing:   timing,
-    },
-    {
-      onConflict:        'doctor_id,drug_name',
-      ignoreDuplicates:  false,
-    },
-  )
+  await supabase.rpc('increment_drug_usage', {
+    p_clinic_id:  clinicId,
+    p_doctor_id:  doctorId,
+    p_drug_name:  drugName,
+    p_dosage:     dosage ?? '',
+    p_duration:   duration ?? 0,
+    p_timing:     timing ?? '',
+  })
 }

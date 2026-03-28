@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { LogOut, Menu, X, Stethoscope, Clock } from 'lucide-react'
+import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useSession } from '../../hooks/useSession'
 import { useQueue } from '../../hooks/useQueue'
@@ -45,6 +46,17 @@ export default function DoctorPortal() {
     [queue],
   )
 
+  // Reconcile activeEntry with the latest queue data after every realtime update.
+  // Prevents OCC conflicts from stale version numbers when doctor selects a patient
+  // and then the queue updates in the background.
+  useEffect(() => {
+    if (!activeEntry) return
+    const fresh = queue.find((e) => e.id === activeEntry.id)
+    if (fresh && fresh.version !== activeEntry.version) {
+      setActiveEntry(fresh)
+    }
+  }, [queue, activeEntry])
+
   const displayEntry = activeEntry ?? inConsultation
 
   if (sessionLoading) return <LoadingSpinner fullScreen />
@@ -57,7 +69,11 @@ export default function DoctorPortal() {
       <header className="flex items-center justify-between bg-white px-5 py-3.5" style={{ boxShadow: '0 1px 0 rgba(42,52,55,0.08)' }}>
         <div className="flex items-center gap-3">
           {clinic?.logo_url ? (
-            <img src={clinic.logo_url} alt={`${clinic.name} logo`} className="h-8 w-8 rounded-lg object-contain" />
+            <img
+              src={supabase.storage.from('clinic-docs').getPublicUrl(clinic.logo_url).data.publicUrl}
+              alt={`${clinic.name} logo`}
+              className="h-8 w-8 rounded-lg object-contain"
+            />
           ) : (
             <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ backgroundColor: '#e0f4f4' }}>
               <Stethoscope className="h-4 w-4" style={{ color: '#006a6a' }} aria-hidden="true" />

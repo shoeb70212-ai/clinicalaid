@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { LogOut, RefreshCw } from 'lucide-react'
+import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useSession } from '../../hooks/useSession'
 import { useQueue } from '../../hooks/useQueue'
@@ -9,6 +10,7 @@ import { useConnectionStatus } from '../../hooks/useConnectionStatus'
 import { QueuePanel } from './components/QueuePanel'
 import { AddPatientPanel } from './components/AddPatientPanel'
 import { SessionControls } from './components/SessionControls'
+import { ZReport } from './components/ZReport'
 import { LoadingSpinner } from '../../components/shared/LoadingSpinner'
 
 export default function ReceptionPortal() {
@@ -17,10 +19,27 @@ export default function ReceptionPortal() {
   const { staff, clinic, signOut } = useAuth()
   const online = useConnectionStatus()
 
-  const { session, loading: sessionLoading, refetch: refetchSession } = useSession(staff?.id ?? null)
+  // Query by clinic_id so receptionists in team mode find the doctor's session.
+  const { session, loading: sessionLoading, refetch: refetchSession } = useSession(null, clinic?.id ?? null)
   const { queue,   loading: queueLoading,   refetch: refetchQueue   } = useQueue(session?.id ?? null)
 
   const [showAddPatient, setShowAddPatient] = useState(false)
+  const [zReportSessionId, setZReportSessionId] = useState<string | null>(null)
+  // Capture session ID before close so Z-Report can be shown after session disappears
+  const closingSessionIdRef = useRef<string | null>(null)
+
+  // Show Z-Report when a session transitions from active to closed/gone
+  useEffect(() => {
+    if (!sessionLoading && !session && closingSessionIdRef.current) {
+      setZReportSessionId(closingSessionIdRef.current)
+      closingSessionIdRef.current = null
+    }
+  }, [session, sessionLoading])
+
+  function handleSessionChange() {
+    closingSessionIdRef.current = session?.id ?? null
+    refetchSession()
+  }
 
   if (sessionLoading) return <LoadingSpinner fullScreen />
 
@@ -32,7 +51,11 @@ export default function ReceptionPortal() {
       <header className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3">
         <div className="flex items-center gap-3">
           {clinic?.logo_url && (
-            <img src={clinic.logo_url} alt={`${clinic.name} logo`} className="h-8 w-8 rounded object-contain" />
+            <img
+              src={supabase.storage.from('clinic-docs').getPublicUrl(clinic.logo_url).data.publicUrl}
+              alt={`${clinic.name} logo`}
+              className="h-8 w-8 rounded object-contain"
+            />
           )}
           <div>
             <h1 className="font-['Figtree'] text-lg font-semibold text-[#164e63]">{clinic?.name}</h1>
@@ -60,7 +83,7 @@ export default function ReceptionPortal() {
         session={session}
         clinicId={clinic?.id ?? ''}
         doctorId={staff?.id ?? ''}
-        onSessionChange={refetchSession}
+        onSessionChange={handleSessionChange}
       />
 
       {/* Main content */}
@@ -119,6 +142,14 @@ export default function ReceptionPortal() {
           </div>
         )}
       </main>
+
+      {/* Z-Report modal — shown after session is closed */}
+      {zReportSessionId && (
+        <ZReport
+          sessionId={zReportSessionId}
+          onClose={() => setZReportSessionId(null)}
+        />
+      )}
     </div>
   )
 }

@@ -30,17 +30,17 @@ export async function updateQueueStatus(
     .select()
     .single()
 
-  // !data is the primary conflict signal (version mismatch → 0 rows returned).
-  // PGRST116 is PostgREST's "no rows" error code — checked as a secondary signal.
-  // Belt-and-suspenders: if !data is true we always treat it as a conflict,
-  // regardless of the error code, so a PostgREST version upgrade cannot break OCC.
-  if (!data) {
-    return { success: false, reason: 'conflict' }
-  }
-
-  if (error) {
+  // Check for genuine errors FIRST (network failure, RLS rejection, etc.).
+  // PGRST116 is PostgREST's "no rows" error code — that is a version conflict, not an error.
+  // Belt-and-suspenders: !data check below still catches any edge case where
+  // error is not set but data is null.
+  if (error && error.code !== 'PGRST116') {
     console.error('[OCC] Unexpected error:', error.code, error.message)
     return { success: false, reason: 'error' }
+  }
+
+  if (!data) {
+    return { success: false, reason: 'conflict' }
   }
 
   return { success: true, data: data as QueueEntry }

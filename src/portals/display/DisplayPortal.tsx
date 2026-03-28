@@ -6,9 +6,9 @@ import { useConnectionStatus } from '../../hooks/useConnectionStatus'
 
 interface DisplaySync {
   session_id:       string
-  current_token:    number | null
+  current_token:    string | null   // TEXT in DB: trigger stores "A-1" format
   current_name:     string | null   // first-name only — no full PII
-  next_token:       number | null
+  next_token:       string | null   // TEXT in DB: trigger stores "A-1" format
   queue_count:      number
   session_status:   'open' | 'paused' | 'closed'
   clinic_name:      string

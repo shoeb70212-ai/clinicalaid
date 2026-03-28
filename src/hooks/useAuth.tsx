@@ -69,10 +69,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
+    let cancelled = false
+
     // Register listener first to avoid missing SIGNED_IN on implicit flow
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       // Skip INITIAL_SESSION — handled by getSession() below to avoid double load
       if (event === 'INITIAL_SESSION') return
+      if (cancelled) return
 
       if (session) {
         loadProfile(session)
@@ -91,6 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Handle initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (cancelled) return
       if (session) {
         loadProfile(session)
       } else {
@@ -98,7 +102,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      cancelled = true
+      subscription.unsubscribe()
+    }
   }, [loadProfile])
 
   const signOut = useCallback(async () => {

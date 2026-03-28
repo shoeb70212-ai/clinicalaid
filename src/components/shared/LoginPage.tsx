@@ -69,12 +69,32 @@ export default function LoginPage({ mode = 'login' }: Props) {
     setError(null)
 
     if (mode === 'invite' && inviteToken) {
-      const { error: signUpError } = await supabase.auth.signUp({ email, password })
+      // Step 1: Create auth account
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { name } },
+      })
       if (signUpError) {
         setError(signUpError.message)
         setLoading(false)
         return
       }
+
+      // Step 2: Validate token and create staff record atomically
+      const { error: consumeError } = await supabase.rpc('consume_invite', {
+        p_token:   inviteToken,
+        p_user_id: authData.user!.id,
+        p_name:    name || email,
+      })
+      if (consumeError) {
+        setError(consumeError.message)
+        setLoading(false)
+        return
+      }
+
+      // Refresh session so JWT now has clinic_id / staff_id claims
+      await supabase.auth.refreshSession()
       navigate('/reception')
       return
     }
