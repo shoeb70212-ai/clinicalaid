@@ -176,7 +176,7 @@ export function AnalyticsPanel({ clinicId }: Props) {
                     <YAxis tick={{ fontSize: 9, fill: '#a9b4b7' }} tickLine={false} axisLine={false} />
                     <Tooltip
                       contentStyle={{ fontSize: 11, borderRadius: 8, border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
-                      formatter={(v: number) => [`₹${v.toLocaleString('en-IN')}`, 'Revenue']} />
+                      formatter={(v) => [`₹${Number(v).toLocaleString('en-IN')}`, 'Revenue']} />
                     <Bar dataKey="Revenue" fill="#0891b2" radius={[3, 3, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
