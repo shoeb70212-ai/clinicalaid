@@ -343,5 +343,6 @@ export interface ConsultationDraft {
     pulse:         string
     weight:        string
   }
+  prescriptionItems?: PrescriptionItem[]
   savedAt: number
 }

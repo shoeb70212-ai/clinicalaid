@@ -130,7 +130,8 @@ export function DrugSearch({ doctorId, clinicId, online, onAddDrug }: Props) {
           onChange={handleQueryChange}
           placeholder={online ? 'Search drugs…' : 'Search batch (offline)'}
           disabled={checking}
-          className="w-full rounded-lg border border-gray-200 py-2 pl-9 pr-4 text-sm text-[#164e63] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0891b2] disabled:opacity-50"
+          className="w-full rounded-xl py-2.5 pl-9 pr-4 text-sm disabled:opacity-50"
+        style={{ backgroundColor: '#f0f4f6', color: '#2a3437', border: 'none', outline: 'none' }}
         />
         {loading && (
           <div
@@ -182,10 +183,10 @@ export function DrugSearch({ doctorId, clinicId, online, onAddDrug }: Props) {
               <button
                 type="button"
                 onClick={() => handleSelect(drug)}
-                className="flex w-full cursor-pointer items-center justify-between px-4 py-3 text-left text-sm transition-colors hover:bg-[#ecfeff]"
+                className="flex w-full cursor-pointer items-center justify-between px-4 py-3 text-left text-sm transition-colors hover:bg-[#e0f4f4]"
               >
                 <div>
-                  <span className="font-medium text-[#164e63]">
+                  <span className="font-medium" style={{ color: '#2a3437' }}>
                     {drug.drug_name}
                   </span>
                   {drug.generic_name && (
@@ -212,8 +213,8 @@ export function DrugSearch({ doctorId, clinicId, online, onAddDrug }: Props) {
 
       {/* dosage form — shown after drug selected and not banned */}
       {selected && !banned && (
-        <div className="mt-3 rounded-xl border border-[#a5f3fc] bg-[#ecfeff] p-4">
-          <p className="mb-3 font-medium text-[#164e63]">{selected.drug_name}</p>
+        <div className="mt-3 rounded-xl p-4" style={{ backgroundColor: '#e0f4f4' }}>
+          <p className="mb-3 font-semibold" style={{ fontFamily: 'Manrope, sans-serif', color: '#2a3437' }}>{selected.drug_name}</p>
 
           <div className="grid grid-cols-3 gap-2">
             {/* dosage */}
@@ -225,7 +226,7 @@ export function DrugSearch({ doctorId, clinicId, online, onAddDrug }: Props) {
                 value={dosage}
                 onChange={(e) => setDosage(e.target.value)}
                 placeholder="1-0-1"
-                className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm text-[#164e63] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0891b2]"
+                className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm text-[#164e63] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#006a6a]"
               />
             </div>
 
@@ -239,7 +240,7 @@ export function DrugSearch({ doctorId, clinicId, online, onAddDrug }: Props) {
                 value={duration}
                 onChange={(e) => setDuration(e.target.value)}
                 placeholder="5"
-                className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm text-[#164e63] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0891b2]"
+                className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm text-[#164e63] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#006a6a]"
               />
             </div>
 
@@ -250,7 +251,7 @@ export function DrugSearch({ doctorId, clinicId, online, onAddDrug }: Props) {
                 id="rxTiming"
                 value={timing}
                 onChange={(e) => setTiming(e.target.value)}
-                className="w-full cursor-pointer rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm text-[#164e63] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0891b2]"
+                className="w-full cursor-pointer rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm text-[#164e63] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#006a6a]"
               >
                 <option value="">—</option>
                 <option value="after_food">After food</option>
@@ -269,7 +270,8 @@ export function DrugSearch({ doctorId, clinicId, online, onAddDrug }: Props) {
             <button
               type="button"
               onClick={handleAdd}
-              className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-[#0891b2] px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-[#0e7490]"
+              className="inline-flex cursor-pointer items-center gap-1 rounded-xl px-4 py-2 text-sm font-semibold text-white transition-colors"
+              style={{ background: 'linear-gradient(135deg, #006a6a, #005c5c)' }}
             >
               <Plus className="h-4 w-4" aria-hidden="true" /> Add to Rx
             </button>

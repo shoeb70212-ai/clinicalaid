@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { ChevronDown, ChevronRight } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import type { QueueEntry } from '../../../types'
 
@@ -14,35 +13,18 @@ interface Thumbnail {
   publicUrl: string
 }
 
-// Notes may be a JSON object {"chiefComplaint":"…","quickNotes":"…"} (new format)
-// or a plain string (legacy records saved before the JSON format was introduced).
 function parseNotes(raw: string): { chiefComplaint: string; quickNotes: string } | null {
   try {
     const parsed = JSON.parse(raw)
     if (parsed && typeof parsed.chiefComplaint === 'string') return parsed
-  } catch { /* not JSON — treat as plain text */ }
+  } catch { /* plain text */ }
   return null
 }
 
-function parseNotesPreview(raw: string): string {
+function getPreview(raw: string): string {
   const parsed = parseNotes(raw)
   const text = parsed ? [parsed.chiefComplaint, parsed.quickNotes].filter(Boolean).join(' ') : raw
-  return text.length > 40 ? text.slice(0, 40) + '…' : text
-}
-
-function renderNotes(raw: string) {
-  const parsed = parseNotes(raw)
-  if (!parsed) return <p>{raw}</p>
-  return (
-    <>
-      {parsed.chiefComplaint && (
-        <p><span className="font-medium">Complaint: </span>{parsed.chiefComplaint}</p>
-      )}
-      {parsed.quickNotes && (
-        <p className="mt-1"><span className="font-medium">Notes: </span>{parsed.quickNotes}</p>
-      )}
-    </>
-  )
+  return text.length > 60 ? text.slice(0, 60) + '…' : text
 }
 
 export function VisitHistory({ patientId, clinicId }: Props) {
@@ -67,7 +49,7 @@ export function VisitHistory({ patientId, clinicId }: Props) {
   }, [patientId, clinicId])
 
   async function loadAttachments(queueEntryId: string) {
-    if (thumbsMap[queueEntryId]) return // already loaded
+    if (thumbsMap[queueEntryId]) return
 
     const { data, error } = await supabase
       .from('queue_attachments')
@@ -77,23 +59,16 @@ export function VisitHistory({ patientId, clinicId }: Props) {
       .order('created_at', { ascending: true })
 
     if (error) {
-      console.error('[VisitHistory] Failed to load attachments:', error.message)
       setThumbsMap((prev) => ({ ...prev, [queueEntryId]: [] }))
       return
     }
 
-    if (!data?.length) {
-      setThumbsMap((prev) => ({ ...prev, [queueEntryId]: [] }))
-      return
-    }
-
-    const thumbnails: Thumbnail[] = data.map((row) => {
+    const thumbnails: Thumbnail[] = (data ?? []).map((row) => {
       const { data: urlData } = supabase.storage
         .from('clinic-attachments')
         .getPublicUrl(row.file_path)
       return { id: row.id, file_path: row.file_path, publicUrl: urlData.publicUrl }
     })
-
     setThumbsMap((prev) => ({ ...prev, [queueEntryId]: thumbnails }))
   }
 
@@ -103,66 +78,125 @@ export function VisitHistory({ patientId, clinicId }: Props) {
     if (next) loadAttachments(next)
   }
 
-  if (loading) return <p className="p-2 text-xs text-gray-400">Loading history…</p>
-  if (visits.length === 0) return <p className="p-2 text-xs text-gray-400">No previous visits</p>
+  if (loading) return (
+    <div className="p-2">
+      <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#566164' }}>
+        Past Medical Visits
+      </p>
+      <p className="text-xs" style={{ color: '#a9b4b7' }}>Loading…</p>
+    </div>
+  )
+
+  if (visits.length === 0) return (
+    <div className="p-2">
+      <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#566164' }}>
+        Past Medical Visits
+      </p>
+      <p className="text-xs" style={{ color: '#a9b4b7' }}>No previous visits</p>
+    </div>
+  )
 
   return (
-    <div className="flex flex-col gap-1">
-      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-[#0e7490]">Visit History</p>
-      {visits.map((v) => (
-        <div key={v.id} className="overflow-hidden rounded-lg border border-gray-100">
-          <button
-            type="button"
-            onClick={() => handleExpand(v.id)}
-            className="flex w-full cursor-pointer items-center justify-between px-2 py-1.5 text-left hover:bg-gray-50"
-          >
-            <div>
-              <p className="text-xs font-medium text-[#164e63]">
-                {new Date(v.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-              </p>
-              <p className="text-xs text-gray-400">
-                {v.notes ? parseNotesPreview(v.notes) : 'No notes'}
-              </p>
-            </div>
-            {expanded === v.id
-              ? <ChevronDown  className="h-3 w-3 shrink-0 text-gray-400" aria-hidden="true" />
-              : <ChevronRight className="h-3 w-3 shrink-0 text-gray-400" aria-hidden="true" />
-            }
-          </button>
+    <div>
+      <p className="mb-4 text-[10px] font-semibold uppercase tracking-widest" style={{ color: '#566164' }}>
+        Past Medical Visits
+      </p>
 
-          {expanded === v.id && (
-            <div className="border-t border-gray-100 bg-gray-50 px-2 py-2 text-xs text-[#164e63]">
-              {v.notes && (
-                <div className="mb-2 whitespace-pre-wrap">{renderNotes(v.notes)}</div>
-              )}
+      {/* Timeline */}
+      <div className="relative flex flex-col gap-1">
+        {visits.map((v, idx) => {
+          const date = new Date(v.created_at)
+          const day  = date.toLocaleDateString('en-IN', { day: '2-digit' })
+          const mon  = date.toLocaleDateString('en-IN', { month: 'short' })
+          const yr   = date.getFullYear()
+          const isOpen = expanded === v.id
+          const parsed = v.notes ? parseNotes(v.notes) : null
 
-              {/* Attachment thumbnails — lazy-loaded on expand */}
-              {thumbsMap[v.id] === undefined && (
-                <p className="text-gray-400">Loading attachments…</p>
-              )}
-              {thumbsMap[v.id]?.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {thumbsMap[v.id].map((t) => (
-                    <a
-                      key={t.id}
-                      href={t.publicUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label="Open scanned prescription"
-                    >
-                      <img
-                        src={t.publicUrl}
-                        alt="Scanned prescription"
-                        className="h-16 w-16 rounded-lg border border-gray-200 object-cover transition-opacity hover:opacity-80"
-                      />
-                    </a>
-                  ))}
+          return (
+            <div key={v.id} className="relative flex gap-3">
+              {/* Timeline dot + line */}
+              <div className="flex flex-col items-center">
+                <div
+                  className="mt-3 h-2.5 w-2.5 shrink-0 rounded-full border-2"
+                  style={{
+                    borderColor: idx === 0 ? '#006a6a' : '#d9e4e8',
+                    backgroundColor: idx === 0 ? '#006a6a' : '#ffffff',
+                  }}
+                />
+                {idx < visits.length - 1 && (
+                  <div className="w-px flex-1 mt-1" style={{ backgroundColor: '#e8eff1', minHeight: '20px' }} />
+                )}
+              </div>
+
+              {/* Visit card */}
+              <button
+                type="button"
+                onClick={() => handleExpand(v.id)}
+                className="mb-3 flex-1 cursor-pointer rounded-xl p-3 text-left transition-all"
+                style={{
+                  backgroundColor: isOpen ? '#e0f4f4' : '#ffffff',
+                  boxShadow: '0 1px 4px rgba(42,52,55,0.06)',
+                }}
+              >
+                {/* Date + token */}
+                <div className="flex items-center justify-between gap-1">
+                  <p className="text-xs font-semibold" style={{ color: '#006a6a', fontFamily: 'Manrope, sans-serif' }}>
+                    {mon} {day}, {yr}
+                  </p>
+                  <span className="rounded-md px-1.5 py-0.5 text-[10px] font-medium"
+                    style={{ backgroundColor: '#f0f4f6', color: '#566164' }}>
+                    {v.token_prefix}-{v.token_number}
+                  </span>
                 </div>
-              )}
+
+                {/* Preview */}
+                {!isOpen && v.notes && (
+                  <p className="mt-1 text-xs leading-relaxed" style={{ color: '#566164' }}>
+                    {getPreview(v.notes)}
+                  </p>
+                )}
+
+                {/* Expanded */}
+                {isOpen && v.notes && (
+                  <div className="mt-2 text-xs leading-relaxed" style={{ color: '#2a3437' }}>
+                    {parsed ? (
+                      <>
+                        {parsed.chiefComplaint && (
+                          <p><span className="font-semibold" style={{ color: '#006a6a' }}>Complaint: </span>{parsed.chiefComplaint}</p>
+                        )}
+                        {parsed.quickNotes && (
+                          <p className="mt-1"><span className="font-semibold" style={{ color: '#006a6a' }}>Notes: </span>{parsed.quickNotes}</p>
+                        )}
+                      </>
+                    ) : (
+                      <p>{v.notes}</p>
+                    )}
+
+                    {/* Attachments */}
+                    {thumbsMap[v.id] === undefined && (
+                      <p className="mt-1" style={{ color: '#a9b4b7' }}>Loading attachments…</p>
+                    )}
+                    {thumbsMap[v.id]?.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {thumbsMap[v.id].map((t) => (
+                          <a key={t.id} href={t.publicUrl} target="_blank" rel="noopener noreferrer"
+                            aria-label="Open scanned prescription">
+                            <img src={t.publicUrl} alt="Scanned prescription"
+                              className="h-14 w-14 rounded-lg object-cover transition-opacity hover:opacity-80"
+                              style={{ border: '1px solid #e8eff1' }} />
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {!v.notes && <p className="mt-1 text-xs italic" style={{ color: '#a9b4b7' }}>No notes recorded</p>}
+              </button>
             </div>
-          )}
-        </div>
-      ))}
+          )
+        })}
+      </div>
     </div>
   )
 }
