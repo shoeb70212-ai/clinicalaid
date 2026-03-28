@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { AlertTriangle, ShieldCheck, ShieldX, Droplets, Trash2, Plus } from 'lucide-react'
+import { pdf } from '@react-pdf/renderer'
+import { AlertTriangle, ShieldCheck, ShieldX, Droplets, Trash2, Plus, Download } from 'lucide-react'
+import { PrescriptionPDF } from './PrescriptionPDF'
 import { updateQueueStatus, updateQueueNotes, verifyIdentity } from '../../../lib/occ'
 import { isValidTransition } from '../../../lib/transitions'
 import { saveDraft, loadDraft, clearDraft } from '../../../lib/draftSave'
@@ -12,12 +14,19 @@ import { ScanAttachment } from './ScanAttachment'
 import { DrugSearch } from './DrugSearch'
 
 interface Props {
-  entry:     QueueEntryWithPatient
-  clinicId:  string
-  doctorId:  string
-  staffId:   string
-  online:    boolean
-  onUpdate:  () => void
+  entry:        QueueEntryWithPatient
+  clinicId:     string
+  doctorId:     string
+  staffId:      string
+  online:       boolean
+  onUpdate:     () => void
+  // For PDF generation
+  doctorName?:    string
+  specialty?:     string | null
+  regNumber?:     string | null
+  clinicName?:    string
+  clinicAddress?: string | null
+  clinicPhone?:   string | null
 }
 
 const TIMING_LABEL: Record<string, string> = {
@@ -27,7 +36,7 @@ const TIMING_LABEL: Record<string, string> = {
   sos:            'SOS',
 }
 
-export function ConsultationPanel({ entry, clinicId, doctorId, staffId, online, onUpdate }: Props) {
+export function ConsultationPanel({ entry, clinicId, doctorId, staffId, online, onUpdate, doctorName = '', specialty, regNumber, clinicName = '', clinicAddress, clinicPhone }: Props) {
   const patient = entry.patient
 
   const [tab,         setTab]         = useState<'notes' | 'history' | 'vitals'>('notes')
@@ -123,6 +132,32 @@ export function ConsultationPanel({ entry, clinicId, doctorId, staffId, online, 
     await supabase.rpc('unlink_and_isolate', { p_queue_entry_id: entry.id, p_clinic_id: clinicId })
     setLoading(false)
     onUpdate()
+  }
+
+  async function handleDownloadRx() {
+    const date = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+    const blob = await pdf(
+      <PrescriptionPDF
+        patientName={patient.name}
+        patientDob={patient.dob ?? null}
+        patientGender={patient.gender ?? null}
+        doctorName={doctorName}
+        specialty={specialty ?? null}
+        regNumber={regNumber ?? null}
+        clinicName={clinicName}
+        clinicAddress={clinicAddress ?? null}
+        clinicPhone={clinicPhone ?? null}
+        chiefComplaint={draft.chiefComplaint}
+        prescriptions={draft.prescriptionItems ?? []}
+        date={date}
+      />
+    ).toBlob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `Rx_${patient.name.replace(/\s+/g, '_')}_${date}.pdf`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   const canStart     = isValidTransition(entry.status, 'IN_CONSULTATION', 'doctor', entry.identity_verified)
@@ -471,6 +506,15 @@ export function ConsultationPanel({ entry, clinicId, doctorId, staffId, online, 
                   No Show
                 </button>
               </>
+            )}
+            {rxItems.length > 0 && (
+              <button onClick={handleDownloadRx}
+                className="ml-auto cursor-pointer rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors"
+                style={{ borderColor: '#d9e4e8', color: '#006a6a', backgroundColor: '#fff' }}
+                aria-label="Download prescription PDF"
+                title="Download Rx PDF">
+                <Download className="h-4 w-4" aria-hidden="true" />
+              </button>
             )}
           </div>
         </div>

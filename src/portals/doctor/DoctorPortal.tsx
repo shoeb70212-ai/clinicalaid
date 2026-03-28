@@ -165,6 +165,12 @@ export default function DoctorPortal() {
                     staffId={staff?.id ?? ''}
                     online={online}
                     onUpdate={() => { refetchQueue(); setActiveEntry(null) }}
+                    doctorName={staff?.name}
+                    specialty={staff?.specialty}
+                    regNumber={staff?.reg_number}
+                    clinicName={clinic?.name}
+                    clinicAddress={clinic?.address}
+                    clinicPhone={clinic?.phone}
                   />
                 : (
                   <div className="flex h-full items-center justify-center p-8">
