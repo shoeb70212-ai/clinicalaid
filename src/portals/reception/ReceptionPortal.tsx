@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { LogOut, RefreshCw, Calendar, Bell } from 'lucide-react'
+import { LogOut, RefreshCw, Calendar, Bell, BarChart2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useSession } from '../../hooks/useSession'
@@ -11,6 +11,7 @@ import { QueuePanel } from './components/QueuePanel'
 import { AddPatientPanel } from './components/AddPatientPanel'
 import { AppointmentPanel } from './components/AppointmentPanel'
 import { RecallPanel } from './components/RecallPanel'
+import { AnalyticsPanel } from './components/AnalyticsPanel'
 import { SessionControls } from './components/SessionControls'
 import { ZReport } from './components/ZReport'
 import { LoadingSpinner } from '../../components/shared/LoadingSpinner'
@@ -28,6 +29,7 @@ export default function ReceptionPortal() {
   const [showAddPatient,   setShowAddPatient]   = useState(false)
   const [showAppointments, setShowAppointments] = useState(false)
   const [showRecall,       setShowRecall]       = useState(false)
+  const [showAnalytics,    setShowAnalytics]    = useState(false)
   const [zReportSessionId, setZReportSessionId] = useState<string | null>(null)
   // Capture session ID before close so Z-Report can be shown after session disappears
   const closingSessionIdRef = useRef<string | null>(null)
@@ -75,17 +77,23 @@ export default function ReceptionPortal() {
             className="cursor-pointer rounded-lg p-2 text-[#0e7490] transition-colors hover:bg-[#ecfeff]">
             <RefreshCw className="h-4 w-4" aria-hidden="true" />
           </button>
-          <button onClick={() => { setShowAppointments((v) => !v); setShowRecall(false) }}
+          <button onClick={() => { setShowAppointments((v) => !v); setShowRecall(false); setShowAnalytics(false) }}
             aria-label="Appointments"
             aria-pressed={showAppointments}
             className={`cursor-pointer rounded-lg p-2 transition-colors ${showAppointments ? 'bg-[#e0f4f4] text-[#006a6a]' : 'text-[#0e7490] hover:bg-[#ecfeff]'}`}>
             <Calendar className="h-4 w-4" aria-hidden="true" />
           </button>
-          <button onClick={() => { setShowRecall((v) => !v); setShowAppointments(false) }}
+          <button onClick={() => { setShowRecall((v) => !v); setShowAppointments(false); setShowAnalytics(false) }}
             aria-label="Patient recall"
             aria-pressed={showRecall}
             className={`cursor-pointer rounded-lg p-2 transition-colors ${showRecall ? 'bg-[#fef9f0] text-[#b45309]' : 'text-[#0e7490] hover:bg-[#ecfeff]'}`}>
             <Bell className="h-4 w-4" aria-hidden="true" />
+          </button>
+          <button onClick={() => { setShowAnalytics((v) => !v); setShowAppointments(false); setShowRecall(false) }}
+            aria-label="Analytics"
+            aria-pressed={showAnalytics}
+            className={`cursor-pointer rounded-lg p-2 transition-colors ${showAnalytics ? 'bg-[#e0f4f4] text-[#006a6a]' : 'text-[#0e7490] hover:bg-[#ecfeff]'}`}>
+            <BarChart2 className="h-4 w-4" aria-hidden="true" />
           </button>
           <button onClick={signOut} aria-label="Sign out"
             className="cursor-pointer rounded-lg p-2 text-[#0e7490] transition-colors hover:bg-[#ecfeff]">
@@ -105,7 +113,7 @@ export default function ReceptionPortal() {
       {/* Main content */}
       <main id="main-content" className="flex flex-1 overflow-hidden">
         {/* Queue area */}
-        <div className={`flex flex-col overflow-hidden ${(showAppointments || showRecall) ? 'hidden md:flex md:w-3/5' : 'flex-1'}`}>
+        <div className={`flex flex-col overflow-hidden ${(showAppointments || showRecall || showAnalytics) ? 'hidden md:flex md:w-3/5' : 'flex-1'}`}>
           {session ? (
             <>
               {/* Queue panel — full width or split with add patient */}
@@ -181,6 +189,13 @@ export default function ReceptionPortal() {
               online={online}
               onQueued={refetchQueue}
             />
+          </div>
+        )}
+
+        {/* Analytics panel — full-screen overlay on mobile, side panel on desktop */}
+        {showAnalytics && (
+          <div className="fixed inset-0 z-30 overflow-y-auto bg-white md:relative md:inset-auto md:z-auto md:flex md:w-2/5 md:flex-col md:border-l md:border-gray-200">
+            <AnalyticsPanel clinicId={clinic?.id ?? ''} />
           </div>
         )}
       </main>
