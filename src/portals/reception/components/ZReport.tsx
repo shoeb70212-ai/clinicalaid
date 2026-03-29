@@ -64,7 +64,7 @@ export function ZReport({ sessionId, onClose }: Props) {
         // Don't abort — still show summary totals, but note the CSV will be empty
         setError(`Summary loaded but queue details unavailable: ${queueResult.error.message}`)
       } else {
-        setQueueRows((queueResult.data ?? []) as QueueRow[])
+        setQueueRows((queueResult.data ?? []) as unknown as QueueRow[])
       }
 
       setLoading(false)

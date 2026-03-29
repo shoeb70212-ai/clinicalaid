@@ -42,7 +42,7 @@ export function AnalyticsPanel({ clinicId, currency = '₹' }: Props) {
   const [diagnoses,  setDiagnoses]  = useState<TopItem[]>([])
   const [drugs,      setDrugs]      = useState<TopItem[]>([])
   const [loading,    setLoading]    = useState(true)
-  const [fetchError, setFetchError] = useState<string | null>(null)
+  const [, setFetchError] = useState<string | null>(null)
 
   const fetchAll = useCallback(async () => {
     setLoading(true)

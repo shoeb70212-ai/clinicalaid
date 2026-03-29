@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { Plus, Trash2, X, Tag, Mic, MicOff } from 'lucide-react'
 import { TIMING_LABEL } from '../../../lib/constants'
-import { searchIcd10, icd10Label } from '../../../lib/icd10'
+import { searchIcd10 } from '../../../lib/icd10'
 import { createVoiceController, type VoiceController } from '../../../lib/voice'
 import { DrugSearch } from './DrugSearch'
 import { ScanAttachment } from './ScanAttachment'

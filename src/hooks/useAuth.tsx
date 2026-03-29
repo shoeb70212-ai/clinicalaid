@@ -10,13 +10,6 @@ import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import type { AuthState, Clinic, StaffRole } from '../types'
 
-type StaffPartial = {
-  id: string
-  clinic_id: string
-  role: string
-  is_active: boolean
-  totp_required: boolean | null
-}
 
 const AuthContext = createContext<AuthState & {
   signOut: () => Promise<void>

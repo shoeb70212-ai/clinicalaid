@@ -19,13 +19,26 @@ type Callback = (transcript: string) => void
  * @param onError    — called if the browser rejects speech
  * @param language   — BCP-47 language tag, e.g. 'en-IN', 'hi-IN', 'mr-IN', 'ta-IN'
  */
+// Minimal interface for the parts of SpeechRecognition we actually use.
+// The global SpeechRecognition type is not available in all TS DOM lib versions.
+interface SR {
+  lang:            string
+  continuous:      boolean
+  interimResults:  boolean
+  onresult:        ((event: SpeechRecognitionEvent) => void) | null
+  onerror:         ((event: SpeechRecognitionErrorEvent) => void) | null
+  start():         void
+  stop():          void
+}
+type SRCtor = new () => SR
+
 export function createVoiceController(
   onResult: Callback,
   onError:  (msg: string) => void,
   language = 'en-IN',
 ): VoiceController {
-  const SR = (window as Record<string, unknown>).SpeechRecognition as (new () => SpeechRecognition) | undefined
-      ?? (window as Record<string, unknown>).webkitSpeechRecognition as (new () => SpeechRecognition) | undefined
+  const win = window as unknown as Record<string, unknown>
+  const SR = (win.SpeechRecognition ?? win.webkitSpeechRecognition) as SRCtor | undefined
 
   if (!SR) {
     return {
