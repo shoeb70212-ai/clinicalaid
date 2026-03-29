@@ -146,7 +146,48 @@ export function PatientSidebar({ entry, draft, inputsDisabled, onUpdateDraft }: 
               className="w-full rounded-lg px-2.5 py-1.5 text-sm font-semibold transition-all disabled:opacity-50"
               style={inputStyle} />
           </VitalCard>
+
+          <VitalCard label="Wt / Ht" unit="kg / cm">
+            <div className="flex gap-1">
+              <input type="number" placeholder="70" min="0"
+                value={draft.vitals.weight}
+                onChange={(e) => onUpdateDraft({ vitals: { ...draft.vitals, weight: e.target.value } })}
+                disabled={inputsDisabled}
+                className="w-full rounded-lg px-2 py-1.5 text-sm font-semibold transition-all disabled:opacity-50"
+                style={inputStyle} />
+              <input type="number" placeholder="170" min="0"
+                value={draft.vitals.height}
+                onChange={(e) => onUpdateDraft({ vitals: { ...draft.vitals, height: e.target.value } })}
+                disabled={inputsDisabled}
+                className="w-full rounded-lg px-2 py-1.5 text-sm font-semibold transition-all disabled:opacity-50"
+                style={inputStyle} />
+            </div>
+          </VitalCard>
         </div>
+
+        {/* BMI computed */}
+        {(() => {
+          const wt = parseFloat(draft.vitals.weight)
+          const ht = parseFloat(draft.vitals.height)
+          if (isNaN(wt) || isNaN(ht) || ht <= 0) return null
+          const bmi = wt / Math.pow(ht / 100, 2)
+          const { label, color } = bmi < 18.5
+            ? { label: 'Underweight', color: '#2563eb' }
+            : bmi < 25 ? { label: 'Normal', color: '#16a34a' }
+            : bmi < 30 ? { label: 'Overweight', color: '#d97706' }
+            : { label: 'Obese', color: '#dc2626' }
+          return (
+            <div className="mt-1 flex items-center justify-between rounded-lg px-2.5 py-2"
+              style={{ backgroundColor: 'var(--color-surface-low)' }}>
+              <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: 'var(--color-muted)' }}>BMI</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm font-bold" style={{ color: 'var(--color-ink)' }}>{bmi.toFixed(1)}</span>
+                <span className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+                  style={{ backgroundColor: `${color}1a`, color }}>{label}</span>
+              </div>
+            </div>
+          )
+        })()}
       </div>
     </div>
   )

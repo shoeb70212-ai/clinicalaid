@@ -141,9 +141,12 @@ export function EncounterForm({
           {!inputsDisabled && (
             <button type="button" onClick={() => toggleVoice('cc')}
               aria-label={voiceField === 'cc' ? 'Stop dictation' : 'Start voice dictation for chief complaint'}
-              className="cursor-pointer rounded-lg p-1.5 transition-colors"
+              className={`relative cursor-pointer rounded-lg p-1.5 transition-colors ${voiceField === 'cc' ? 'animate-pulse' : ''}`}
               style={{ backgroundColor: voiceField === 'cc' ? '#fef2f2' : 'transparent', color: voiceField === 'cc' ? '#dc2626' : '#566164' }}>
-              {voiceField === 'cc' ? <MicOff className="h-3.5 w-3.5" aria-hidden="true" /> : <Mic className="h-3.5 w-3.5" aria-hidden="true" />}
+              {voiceField === 'cc'
+                ? <><MicOff className="h-3.5 w-3.5" aria-hidden="true" /><span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-red-500" aria-hidden="true" /></>
+                : <Mic className="h-3.5 w-3.5" aria-hidden="true" />
+              }
             </button>
           )}
         </div>
@@ -413,9 +416,12 @@ export function EncounterForm({
           {!inputsDisabled && (
             <button type="button" onClick={() => toggleVoice('notes')}
               aria-label={voiceField === 'notes' ? 'Stop dictation' : 'Start voice dictation for clinical notes'}
-              className="cursor-pointer rounded-lg p-1.5 transition-colors"
+              className={`relative cursor-pointer rounded-lg p-1.5 transition-colors ${voiceField === 'notes' ? 'animate-pulse' : ''}`}
               style={{ backgroundColor: voiceField === 'notes' ? '#fef2f2' : 'transparent', color: voiceField === 'notes' ? '#dc2626' : '#566164' }}>
-              {voiceField === 'notes' ? <MicOff className="h-3.5 w-3.5" aria-hidden="true" /> : <Mic className="h-3.5 w-3.5" aria-hidden="true" />}
+              {voiceField === 'notes'
+                ? <><MicOff className="h-3.5 w-3.5" aria-hidden="true" /><span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-red-500" aria-hidden="true" /></>
+                : <Mic className="h-3.5 w-3.5" aria-hidden="true" />
+              }
             </button>
           )}
         </div>

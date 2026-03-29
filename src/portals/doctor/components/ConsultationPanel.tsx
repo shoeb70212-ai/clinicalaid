@@ -35,7 +35,7 @@ export function ConsultationPanel({ entry, clinicId, doctorId, staffId, online, 
       queueEntryId:      entry.id,
       chiefComplaint:    '',
       quickNotes:        '',
-      vitals:            { bp_systolic: '', bp_diastolic: '', temperature: '', spo2: '', pulse: '', weight: '' },
+      vitals:            { bp_systolic: '', bp_diastolic: '', temperature: '', spo2: '', pulse: '', weight: '', height: '' },
       prescriptionItems: [],
       savedAt:           Date.now(),
     }
@@ -45,6 +45,25 @@ export function ConsultationPanel({ entry, clinicId, doctorId, staffId, online, 
   const [loading,         setLoading]         = useState(false)
   const [transitionError, setTransitionError] = useState<string | null>(null)
   const [templates,       setTemplates]       = useState<RxTemplate[]>([])
+  const [visitMeta,       setVisitMeta]       = useState<{ count: number; lastDate: string | null } | null>(null)
+
+  // Fetch visit count + last date for the sticky history banner
+  useEffect(() => {
+    supabase
+      .from('visits')
+      .select('created_at')
+      .eq('patient_id', patient.id)
+      .eq('clinic_id', clinicId)
+      .order('created_at', { ascending: false })
+      .limit(20)
+      .then(({ data }) => {
+        if (!data || data.length === 0) { setVisitMeta({ count: 0, lastDate: null }); return }
+        const lastDate = new Date(data[0].created_at)
+        const diffDays = Math.floor((Date.now() - lastDate.getTime()) / 86400000)
+        const label = diffDays === 0 ? 'today' : diffDays === 1 ? 'yesterday' : `${diffDays} days ago`
+        setVisitMeta({ count: data.length, lastDate: label })
+      })
+  }, [patient.id, clinicId])
 
   // Load Rx templates for this doctor on mount
   useEffect(() => {
@@ -297,6 +316,21 @@ export function ConsultationPanel({ entry, clinicId, doctorId, staffId, online, 
             <div className="flex flex-1 flex-col overflow-hidden">
               {/* Notes tab (desktop always visible) */}
               <div className={tab !== 'notes' ? 'hidden md:flex flex-col flex-1 overflow-hidden' : 'flex flex-col flex-1 overflow-hidden'}>
+                {/* Previous visits sticky banner */}
+                {visitMeta && visitMeta.count > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setTab('history')}
+                    className="flex w-full cursor-pointer items-center justify-between px-4 py-2 text-left text-xs transition-colors hover:opacity-80 md:hidden"
+                    style={{ backgroundColor: '#e0f4f4', color: '#005c5c', borderBottom: '1px solid rgba(0,92,92,0.12)' }}
+                  >
+                    <span>
+                      <span className="font-semibold">{visitMeta.count} previous visit{visitMeta.count !== 1 ? 's' : ''}</span>
+                      {visitMeta.lastDate ? ` · last seen ${visitMeta.lastDate}` : ''}
+                    </span>
+                    <span className="font-semibold">View →</span>
+                  </button>
+                )}
                 <EncounterForm
                   draft={draft}
                   entry={entry}
@@ -325,7 +359,7 @@ export function ConsultationPanel({ entry, clinicId, doctorId, staffId, online, 
               {/* History tab (mobile) */}
               {tab === 'history' && (
                 <div className="flex-1 overflow-y-auto p-4 md:hidden">
-                  <VisitHistory patientId={patient.id} clinicId={clinicId} />
+                  <VisitHistory patientId={patient.id} clinicId={clinicId} onLoadTemplate={handleLoadTemplate} />
                 </div>
               )}
             </div>
@@ -333,7 +367,7 @@ export function ConsultationPanel({ entry, clinicId, doctorId, staffId, online, 
             {/* Col 3: Visit history (desktop) */}
             <div className="hidden w-60 shrink-0 overflow-y-auto p-4 md:block"
               style={{ borderLeft: '1px solid rgba(169,180,183,0.15)', backgroundColor: '#f8fafb' }}>
-              <VisitHistory patientId={patient.id} clinicId={clinicId} />
+              <VisitHistory patientId={patient.id} clinicId={clinicId} onLoadTemplate={handleLoadTemplate} />
             </div>
           </div>
         </div>

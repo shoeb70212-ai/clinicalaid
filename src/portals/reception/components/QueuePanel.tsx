@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, Users } from 'lucide-react'
 import { updateQueueStatus } from '../../../lib/occ'
 import { isValidTransition } from '../../../lib/transitions'
 import { calcAge } from '../../../lib/utils'
+import { EmptyState } from '../../../components/shared/EmptyState'
 import type { QueueEntryWithPatient, StaffRole, QueueStatus } from '../../../types'
 import { useTranslation } from 'react-i18next'
 
@@ -32,11 +33,20 @@ export function QueuePanel({ queue, staffRole, online, onUpdate, avgSeconds = 60
 
   if (active.length === 0) {
     return (
-      <div className="flex flex-1 items-center justify-center p-8 text-center text-[#0e7490]">
-        {t('queue.empty')}
-      </div>
+      <EmptyState
+        icon={<Users className="h-6 w-6" style={{ color: '#0e7490' }} />}
+        title={t('queue.empty')}
+        subtitle="Add a patient using the + button above"
+      />
     )
   }
+
+  // Time already consumed by the IN_CONSULTATION patient
+  const inConsultation = active.find((e) => e.status === 'IN_CONSULTATION')
+  const elapsedSecs = inConsultation?.called_at
+    ? Math.floor((Date.now() - new Date(inConsultation.called_at).getTime()) / 1000)
+    : 0
+  const remainingSecs = Math.max(0, avgSeconds - elapsedSecs)
 
   return (
     <>
@@ -51,8 +61,13 @@ export function QueuePanel({ queue, staffRole, online, onUpdate, avgSeconds = 60
     <ul className="flex-1 overflow-y-auto divide-y divide-gray-100 px-4 py-2" aria-label="Queue">
       {active.map((entry, idx) => {
         const age = calcAge(entry.patient.dob ?? null)
-        const waitMins = Math.round((idx * avgSeconds) / 60)
-        const waitText = idx === 0 ? 'Now' : `~${waitMins} min`
+        // Wait = time left for current consultation + avg per patient ahead
+        const waitSecs = remainingSecs + idx * avgSeconds
+        const waitMins = Math.round(waitSecs / 60)
+        const waitText = entry.status === 'IN_CONSULTATION'
+          ? 'In consultation'
+          : idx === 0 && !inConsultation ? 'Now'
+          : `~${waitMins} min`
 
         return (
           <li key={entry.id} className="py-3">

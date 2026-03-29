@@ -1,4 +1,5 @@
 import { AlertTriangle, UserCheck } from 'lucide-react'
+import { EmptyState } from '../../../components/shared/EmptyState'
 import type { QueueEntryWithPatient } from '../../../types'
 
 interface Props {
@@ -54,13 +55,11 @@ export function DoctorQueueSidebar({ queue, activeId, onSelect, avgSeconds = 600
       {/* Patient list */}
       <div className="flex flex-col gap-1 p-2 overflow-y-auto flex-1">
         {visible.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl" style={{ backgroundColor: '#e8eff1' }}>
-              <UserCheck className="h-5 w-5" style={{ color: '#566164' }} aria-hidden="true" />
-            </div>
-            <p className="text-sm font-medium" style={{ color: '#2a3437' }}>No patients yet</p>
-            <p className="mt-0.5 text-xs" style={{ color: '#566164' }}>Patients appear here when checked in</p>
-          </div>
+          <EmptyState
+            icon={<UserCheck className="h-5 w-5" style={{ color: '#566164' }} />}
+            title="No patients yet"
+            subtitle="Patients appear here when checked in"
+          />
         )}
 
         {visible.map((entry, idx) => {

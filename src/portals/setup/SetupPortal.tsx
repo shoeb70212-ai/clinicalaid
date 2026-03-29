@@ -34,12 +34,14 @@ export type SetupData = {
   sessionId:     string
 }
 
-const STEPS = ['account', 'clinic', 'mode', 'qr_or_invite', 'done'] as const
-type Step = typeof STEPS[number]
+const ALL_STEPS  = ['account', 'clinic', 'mode', 'qr_or_invite', 'done'] as const
+const OAUTH_STEPS: Step[] = ['clinic', 'mode', 'qr_or_invite', 'done']
+type Step = typeof ALL_STEPS[number]
 
 export default function SetupPortal() {
   const navigate = useNavigate()
-  const [step, setStep] = useState<Step>('account')
+  const [step,    setStep]    = useState<Step>('account')
+  const [isOAuth, setIsOAuth] = useState(false)
   const [data, setData] = useState<Partial<SetupData>>({
     primaryColor: '#0891b2',
     clinicMode:   'solo',
@@ -59,8 +61,8 @@ export default function SetupPortal() {
           doctorName: name,
         }))
         // Only skip account step if they came via OAuth (no password)
-        const isOAuth = session.user.app_metadata?.provider !== 'email'
-        if (isOAuth) setStep('clinic')
+        const oauth = session.user.app_metadata?.provider !== 'email'
+        if (oauth) { setIsOAuth(true); setStep('clinic') }
       }
     })
   }, [])
@@ -68,9 +70,11 @@ export default function SetupPortal() {
   const update = (patch: Partial<SetupData>) =>
     setData((prev) => ({ ...prev, ...patch }))
 
+  const steps = isOAuth ? OAUTH_STEPS : ALL_STEPS
+
   const next = () => {
-    const idx = STEPS.indexOf(step)
-    if (idx < STEPS.length - 1) setStep(STEPS[idx + 1])
+    const idx = steps.indexOf(step)
+    if (idx < steps.length - 1) setStep(steps[idx + 1])
   }
 
   const goToApp = async () => {
@@ -85,11 +89,11 @@ export default function SetupPortal() {
       <div className="mx-auto max-w-lg">
         {/* Progress indicator */}
         <div className="mb-8 flex items-center gap-2">
-          {STEPS.map((s, i) => (
+          {steps.map((s, i) => (
             <div
               key={s}
               className={`h-2 flex-1 rounded-full transition-colors duration-300 ${
-                STEPS.indexOf(step) >= i ? 'bg-[#0891b2]' : 'bg-[#0891b2]/20'
+                steps.indexOf(step) >= i ? 'bg-[#0891b2]' : 'bg-[#0891b2]/20'
               }`}
             />
           ))}

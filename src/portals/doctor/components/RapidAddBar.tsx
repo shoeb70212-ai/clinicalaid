@@ -22,6 +22,7 @@ export function RapidAddBar({ sessionId, clinicId, doctorId, online, onAdded }: 
   const [family,        setFamily]        = useState<FamilyMember[] | null>(null)
   const [loading,       setLoading]       = useState(false)
   const [error,         setError]         = useState<string | null>(null)
+  const [added,         setAdded]         = useState(false)
   const [mobileFocused, setMobileFocused] = useState(false)
   const [nameFocused,   setNameFocused]   = useState(false)
 
@@ -68,6 +69,8 @@ export function RapidAddBar({ sessionId, clinicId, doctorId, online, onAdded }: 
     setName('')
     setFamily(null)
     setLoading(false)
+    setAdded(true)
+    setTimeout(() => setAdded(false), 3000)
     onAdded()
   }
 
@@ -82,7 +85,14 @@ export function RapidAddBar({ sessionId, clinicId, doctorId, online, onAdded }: 
       p_patient_id: patientId,
     })
     if (rpcError) setError(rpcError.message)
-    else { setMobile(''); setName(''); setFamily(null); onAdded() }
+    else {
+      setMobile('')
+      setName('')
+      setFamily(null)
+      setAdded(true)
+      setTimeout(() => setAdded(false), 3000)
+      onAdded()
+    }
     setLoading(false)
   }
 
@@ -161,6 +171,11 @@ export function RapidAddBar({ sessionId, clinicId, doctorId, online, onAdded }: 
       {error && (
         <p role="alert" className="mt-1.5 text-xs" style={{ color: 'var(--color-error)' }}>
           ⚠ {error}
+        </p>
+      )}
+      {added && (
+        <p role="status" className="mt-1.5 text-xs font-medium" style={{ color: 'var(--color-success, #059669)' }}>
+          ✓ Added
         </p>
       )}
 

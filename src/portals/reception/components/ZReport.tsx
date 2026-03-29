@@ -28,10 +28,12 @@ interface QueueRow {
  * Shown after session is closed from SessionControls.
  */
 export function ZReport({ sessionId, onClose }: Props) {
-  const [report,    setReport]    = useState<ZReportType | null>(null)
-  const [queueRows, setQueueRows] = useState<QueueRow[]>([])
-  const [loading,   setLoading]   = useState(true)
-  const [error,     setError]     = useState<string | null>(null)
+  const [report,       setReport]       = useState<ZReportType | null>(null)
+  const [queueRows,    setQueueRows]    = useState<QueueRow[]>([])
+  const [loading,      setLoading]      = useState(true)
+  const [error,        setError]        = useState<string | null>(null)
+  const [printing,     setPrinting]     = useState(false)
+  const [downloading,  setDownloading]  = useState(false)
 
   useEffect(() => {
     async function fetchAll() {
@@ -86,6 +88,7 @@ export function ZReport({ sessionId, onClose }: Props) {
   }
 
   function downloadCSV() {
+    setDownloading(true)
     const header = 'Token,Patient,Status,Time'
     const rows = queueRows.map((r) => {
       const token   = String(r.token_number ?? '')
@@ -102,6 +105,15 @@ export function ZReport({ sessionId, onClose }: Props) {
     a.download = `session-${sessionId.slice(0, 8)}.csv`
     a.click()
     URL.revokeObjectURL(url)
+    setTimeout(() => setDownloading(false), 800)
+  }
+
+  function handlePrint() {
+    setPrinting(true)
+    setTimeout(() => {
+      window.print()
+      setPrinting(false)
+    }, 200)
   }
 
   return (
@@ -178,18 +190,26 @@ export function ZReport({ sessionId, onClose }: Props) {
             <button
               type="button"
               onClick={downloadCSV}
-              className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-[#164e63] transition-colors hover:bg-gray-50"
+              disabled={downloading}
+              className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-[#164e63] transition-colors hover:bg-gray-50 disabled:opacity-60"
             >
-              <Download className="h-4 w-4" aria-hidden="true" />
-              CSV
+              {downloading
+                ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#0891b2] border-t-transparent" aria-hidden="true" />
+                : <Download className="h-4 w-4" aria-hidden="true" />
+              }
+              {downloading ? 'Saving…' : 'CSV'}
             </button>
             <button
               type="button"
-              onClick={() => window.print()}
-              className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-[#164e63] transition-colors hover:bg-gray-50"
+              onClick={handlePrint}
+              disabled={printing}
+              className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-[#164e63] transition-colors hover:bg-gray-50 disabled:opacity-60"
             >
-              <Printer className="h-4 w-4" aria-hidden="true" />
-              Print
+              {printing
+                ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#0891b2] border-t-transparent" aria-hidden="true" />
+                : <Printer className="h-4 w-4" aria-hidden="true" />
+              }
+              {printing ? 'Printing…' : 'Print'}
             </button>
             <button
               type="button"

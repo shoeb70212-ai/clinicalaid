@@ -26,8 +26,17 @@ export default function DoctorPortal() {
   const { session, loading: sessionLoading, refetch: refetchSession } = useSession(staff?.id ?? null)
   const { queue,   loading: queueLoading,   refetch: refetchQueue   } = useQueue(session?.id ?? null)
 
-  const [activeEntry, setActiveEntry] = useState<QueueEntryWithPatient | null>(null)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [activeEntry,    setActiveEntry]    = useState<QueueEntryWithPatient | null>(null)
+  const [sidebarOpen,    setSidebarOpen]    = useState(false)
+  const [openingSession, setOpeningSession] = useState(false)
+
+  async function handleOpenSession() {
+    if (!clinic?.id || !staff?.id) return
+    setOpeningSession(true)
+    await supabase.rpc('open_session', { p_clinic_id: clinic.id, p_doctor_id: staff.id })
+    await refetchSession()
+    setOpeningSession(false)
+  }
 
   const handleSelectEntry = useCallback((entry: QueueEntryWithPatient) => {
     setActiveEntry(entry)
@@ -215,8 +224,16 @@ export default function DoctorPortal() {
                 No active session
               </p>
               <p className="mt-1 text-sm" style={{ color: '#566164' }}>
-                Open a session above to start seeing patients.
+                Start a session to begin seeing patients.
               </p>
+              <button
+                type="button"
+                onClick={handleOpenSession}
+                disabled={openingSession}
+                className="mt-4 cursor-pointer rounded-lg bg-[#059669] px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-[#047857] disabled:opacity-60"
+              >
+                {openingSession ? 'Opening…' : 'Open Session'}
+              </button>
             </div>
           </div>
         )}

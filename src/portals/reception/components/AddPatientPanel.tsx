@@ -23,6 +23,7 @@ export function AddPatientPanel({ sessionId, clinicId, onAdded, onClose }: Props
   const [consentText,   setConsentText]   = useState('')
   const [loading,       setLoading]       = useState(false)
   const [error,         setError]         = useState<string | null>(null)
+  const [consentMissing, setConsentMissing] = useState(false)
 
   async function handleMobileSearch(e: FormEvent) {
     e.preventDefault()
@@ -87,7 +88,8 @@ export function AddPatientPanel({ sessionId, clinicId, onAdded, onClose }: Props
       const text = tmpl?.content ?? ''
       if (!text.trim()) {
         // No consent template found — DPDP compliance requires it; block the flow
-        setError('No active consent template found for this clinic. Contact your admin to add one before adding patients.')
+        setError('No consent template is configured for this clinic.')
+        setConsentMissing(true)
         setLoading(false)
         return
       }
@@ -218,7 +220,14 @@ export function AddPatientPanel({ sessionId, clinicId, onAdded, onClose }: Props
               <input id="mobileSearch" type="tel" value={mobile} onChange={(e) => setMobile(e.target.value)}
                 required placeholder="9876543210" className={inputCls} />
             </div>
-            {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+            {error && (
+              <div role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                {error}
+                {consentMissing && (
+                  <> <a href="/setup" className="underline font-medium">Go to Setup</a> to add a consent template.</>
+                )}
+              </div>
+            )}
             <button type="submit" disabled={loading} className={btnCls}>
               {loading ? 'Searching…' : 'Search'}
             </button>

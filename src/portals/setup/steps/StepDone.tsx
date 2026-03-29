@@ -13,16 +13,10 @@ export function StepDone({ onEnterApp }: Props) {
         ClinicFlow is ready. Add your first patient to get started.
       </p>
 
-      <div className="flex flex-col gap-3">
-        <button type="button" onClick={onEnterApp}
-          className="cursor-pointer rounded-lg bg-[#059669] px-6 py-3 font-medium text-white transition-colors duration-200 hover:bg-[#047857]">
-          Start your first consultation →
-        </button>
-        <button type="button" onClick={onEnterApp}
-          className="cursor-pointer text-sm text-[#0e7490] hover:underline">
-          Skip — I&apos;ll add a real patient
-        </button>
-      </div>
+      <button type="button" onClick={onEnterApp}
+        className="cursor-pointer rounded-lg bg-[#059669] px-6 py-3 font-medium text-white transition-colors duration-200 hover:bg-[#047857]">
+        Enter the app →
+      </button>
     </div>
   )
 }

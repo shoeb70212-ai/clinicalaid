@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { ClipboardList, ChevronDown, ChevronUp, Paperclip } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
-import type { Visit } from '../../../types'
+import { EmptyState } from '../../../components/shared/EmptyState'
+import type { Visit, PrescriptionItem } from '../../../types'
 
 interface Props {
-  patientId: string
-  clinicId:  string
+  patientId:       string
+  clinicId:        string
+  onLoadTemplate?: (items: PrescriptionItem[]) => void
 }
 
 interface Thumbnail {
@@ -14,7 +16,7 @@ interface Thumbnail {
   publicUrl: string
 }
 
-export function VisitHistory({ patientId, clinicId }: Props) {
+export function VisitHistory({ patientId, clinicId, onLoadTemplate }: Props) {
   const [visits,    setVisits]    = useState<Visit[]>([])
   const [expanded,  setExpanded]  = useState<string | null>(null)
   const [thumbsMap, setThumbsMap] = useState<Record<string, Thumbnail[]>>({})
@@ -139,12 +141,11 @@ export function VisitHistory({ patientId, clinicId }: Props) {
   if (visits.length === 0) return (
     <div className="p-2">
       {sectionHeader}
-      <div className="flex flex-col items-center justify-center py-8 text-center">
-        <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl" style={{ backgroundColor: 'var(--color-surface-container)' }}>
-          <ClipboardList className="h-5 w-5" style={{ color: 'var(--color-muted)' }} aria-hidden="true" />
-        </div>
-        <p className="text-xs" style={{ color: 'var(--color-muted)' }}>No previous visits</p>
-      </div>
+      <EmptyState
+        icon={<ClipboardList className="h-5 w-5" style={{ color: 'var(--color-muted)' }} />}
+        title="No previous visits"
+        subtitle="History will appear here after the first consultation"
+      />
     </div>
   )
 
@@ -153,9 +154,11 @@ export function VisitHistory({ patientId, clinicId }: Props) {
       {sectionHeader}
 
       {filteredVisits.length === 0 && (
-        <p className="py-4 text-center text-xs" style={{ color: 'var(--color-muted)' }}>
-          No visits in selected range.
-        </p>
+        <EmptyState
+          icon={<ClipboardList className="h-5 w-5" style={{ color: 'var(--color-muted)' }} />}
+          title="No visits in range"
+          subtitle="Try adjusting the date filter above"
+        />
       )}
 
       {/* Timeline */}
@@ -241,7 +244,19 @@ export function VisitHistory({ patientId, clinicId }: Props) {
                     {/* Prescription pills */}
                     {rxItems.length > 0 && (
                       <div className="mt-2">
-                        <p className="mb-1 font-semibold" style={{ color: 'var(--color-primary)' }}>Rx:</p>
+                        <div className="mb-1 flex items-center justify-between gap-2">
+                          <p className="font-semibold" style={{ color: 'var(--color-primary)' }}>Rx:</p>
+                          {onLoadTemplate && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); onLoadTemplate(rxItems as unknown as PrescriptionItem[]) }}
+                              className="cursor-pointer rounded-lg px-2 py-0.5 text-[10px] font-semibold transition-colors"
+                              style={{ backgroundColor: 'var(--color-primary-container)', color: 'var(--color-primary)' }}
+                            >
+                              Use this Rx
+                            </button>
+                          )}
+                        </div>
                         <div className="flex flex-wrap gap-1.5">
                           {rxItems.map((item) => (
                             <span key={item.id}

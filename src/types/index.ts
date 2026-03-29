@@ -407,6 +407,7 @@ export interface ConsultationDraft {
     spo2:          string
     pulse:         string
     weight:        string
+    height:        string   // cm
   }
   prescriptionItems?: PrescriptionItem[]
   icd10Codes?:     string[]   // ICD-10 diagnosis codes selected by doctor

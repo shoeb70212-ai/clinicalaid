@@ -66,11 +66,26 @@ export default function LoginPage({ mode = 'login' }: Props) {
   const [error,       setError]       = useState<string | null>(null)
   const [attempts,    setAttempts]    = useState(getAttemptState)
   const [setupNeeded, setSetupNeeded] = useState(false)
+  const [forgotMode,  setForgotMode]  = useState(false)
+  const [forgotSent,  setForgotSent]  = useState(false)
 
   const isLocked = Date.now() < attempts.lockedUntil
   const lockMinsLeft = Math.ceil((attempts.lockedUntil - Date.now()) / 60000)
 
   const inviteToken = params.get('token')
+
+  async function handleForgotPassword(e: FormEvent) {
+    e.preventDefault()
+    if (!email) return
+    setLoading(true)
+    setError(null)
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/login`,
+    })
+    setLoading(false)
+    if (resetError) { setError(resetError.message); return }
+    setForgotSent(true)
+  }
 
   async function handleGoogleSignIn() {
     setOauthLoading(true)
@@ -254,8 +269,45 @@ export default function LoginPage({ mode = 'login' }: Props) {
           </>
         )}
 
+        {/* Forgot password flow */}
+        {mode === 'login' && forgotMode && !forgotSent && (
+          <form onSubmit={handleForgotPassword} className="flex flex-col gap-4" noValidate>
+            <p className="text-sm text-[#0e7490]">
+              Enter your email and we&apos;ll send you a reset link.
+            </p>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="resetEmail" className="text-sm font-medium text-[#164e63]">Email address</label>
+              <input id="resetEmail" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                required autoComplete="email"
+                className="rounded-lg border border-gray-200 px-3 py-2 text-[#164e63] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0891b2]" />
+            </div>
+            {error && (
+              <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+            )}
+            <button type="submit" disabled={loading}
+              className="cursor-pointer rounded-lg bg-[#059669] px-4 py-2 font-medium text-white transition-colors hover:bg-[#047857] disabled:opacity-60">
+              {loading ? 'Sending…' : 'Send reset link'}
+            </button>
+            <button type="button" onClick={() => { setForgotMode(false); setError(null) }}
+              className="cursor-pointer text-sm text-[#0891b2] hover:underline">
+              Back to sign in
+            </button>
+          </form>
+        )}
+
+        {mode === 'login' && forgotMode && forgotSent && (
+          <div className="flex flex-col items-center gap-3 py-4 text-center">
+            <p className="text-sm font-medium text-[#059669]">Reset link sent!</p>
+            <p className="text-sm text-[#0e7490]">Check your email for a password reset link.</p>
+            <button type="button" onClick={() => { setForgotMode(false); setForgotSent(false); setError(null) }}
+              className="cursor-pointer text-sm text-[#0891b2] hover:underline">
+              Back to sign in
+            </button>
+          </div>
+        )}
+
         {/* Email/password form — always visible on invite, collapsible on login */}
-        {showEmail && !setupNeeded && (
+        {showEmail && !setupNeeded && !forgotMode && (
           <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
             {mode === 'invite' && (
               <div className="flex flex-col gap-1">
@@ -291,9 +343,17 @@ export default function LoginPage({ mode = 'login' }: Props) {
             </div>
 
             <div className="flex flex-col gap-1">
-              <label htmlFor="password" className="text-sm font-medium text-[#164e63]">
-                Password
-              </label>
+              <div className="flex items-center justify-between">
+                <label htmlFor="password" className="text-sm font-medium text-[#164e63]">
+                  Password
+                </label>
+                {mode === 'login' && (
+                  <button type="button" onClick={() => { setForgotMode(true); setError(null) }}
+                    className="cursor-pointer text-xs text-[#0891b2] hover:underline">
+                    Forgot password?
+                  </button>
+                )}
+              </div>
               <div className="relative">
                 <input
                   id="password"
