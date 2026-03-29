@@ -31,6 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     totpRequired: true,
     mfaVerified:  false,
     loading:      true,
+    authError:    null,
   })
 
   const loadProfile = useCallback(async (session: Session) => {
@@ -40,9 +41,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .eq('user_id', session.user.id)
       .maybeSingle()
 
-    // staffError signals a real DB/RLS error; null data means no active staff row
-    if (staffError || !staffRecord) {
-      setState((s) => ({ ...s, session, loading: false }))
+    // staffError = real DB/network failure; !staffRecord = no matching active staff row
+    if (staffError) {
+      setState((s) => ({ ...s, session, loading: false, authError: staffError.message }))
+      return
+    }
+    if (!staffRecord) {
+      setState((s) => ({ ...s, session, loading: false, authError: null }))
       return
     }
 
@@ -51,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: clinicRes } = await supabase
       .from('clinics')
-      .select('*')
+      .select('id, name, clinic_mode, primary_color, logo_url, config, is_active')
       .eq('id', staffRecord.clinic_id)
       .single()
 
@@ -66,6 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       totpRequired,
       mfaVerified,
       loading:      false,
+      authError:    null,
     })
   }, [])
 
@@ -89,6 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           totpRequired: true,
           mfaVerified:  false,
           loading:      false,
+          authError:    null,
         })
       }
     })

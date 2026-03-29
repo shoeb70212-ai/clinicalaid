@@ -71,9 +71,13 @@ export function useQueue(sessionId: string | null) {
               if (entry) setQueue((prev) => sortQueue([...prev, entry]))
             })
           } else if (payload.eventType === 'UPDATE') {
-            // Merge updated queue_entry fields into existing entry (preserves patient join)
+            // Merge updated queue_entry fields — explicitly preserve the patient join
+            // because Realtime payload.new contains only raw table columns (no joins)
             setQueue((prev) => sortQueue(
-              prev.map((e) => e.id === payload.new.id ? { ...e, ...payload.new } : e)
+              prev.map((e) => e.id === payload.new.id
+                ? { ...e, ...payload.new, patient: e.patient }
+                : e
+              )
             ))
           } else {
             // DELETE — full refetch (rare)
@@ -121,6 +125,14 @@ export function useQueueEntry(entryId: string | null) {
 
   useEffect(() => {
     if (!entryId) return
+
+    // Fetch initial state immediately — Realtime only delivers updates after subscription
+    supabase
+      .from('queue_entries')
+      .select('*')
+      .eq('id', entryId)
+      .maybeSingle()
+      .then(({ data }) => { if (data) setEntry(data as QueueEntry) })
 
     const channel = supabase
       .channel(`entry-${entryId}`)

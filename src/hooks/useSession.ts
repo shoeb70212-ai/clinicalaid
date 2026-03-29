@@ -19,8 +19,8 @@ export function useSession(doctorId: string | null, clinicId?: string | null) {
     if (!doctorId && !clinicId) return
     setLoading(true)
 
-    // India is UTC+5:30 — toISOString() returns UTC which can be "tomorrow" after 6:30 PM IST
-    const today = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().split('T')[0]
+    // 'en-CA' locale produces YYYY-MM-DD format; timeZone ensures IST date not UTC date
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
 
     let query = supabase
       .from('sessions')

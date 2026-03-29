@@ -270,7 +270,8 @@ async function compressImage(file: File): Promise<Blob> {
   const canvas = document.createElement('canvas')
   canvas.width  = width
   canvas.height = height
-  const ctx = canvas.getContext('2d')!
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('Canvas 2D context not available')
   // Fill white before drawing — prevents black background when converting transparent PNG to JPEG
   ctx.fillStyle = '#FFFFFF'
   ctx.fillRect(0, 0, width, height)

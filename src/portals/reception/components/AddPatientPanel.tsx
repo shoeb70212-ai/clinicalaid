@@ -173,8 +173,7 @@ export function AddPatientPanel({ sessionId, clinicId, onAdded, onClose }: Props
 
     if (queueError) { setError(queueError.message); setLoading(false); return }
 
-    setLoading(false)
-    onAdded()
+    onAdded() // parent closes the panel (unmounts this component)
   }
 
   async function handleConsentAgree() {

@@ -7,7 +7,9 @@ import { supabase } from '../lib/supabase'
  * but actual connectivity is blocked.
  */
 export function useConnectionStatus(): boolean {
-  const [online, setOnline] = useState(navigator.onLine)
+  const [online, setOnline] = useState(
+    typeof navigator !== 'undefined' ? navigator.onLine : true
+  )
   const pingRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   function schedulePing() {
@@ -41,7 +43,7 @@ export function useConnectionStatus(): boolean {
     window.addEventListener('offline', handleOffline)
 
     // Initial ping if browser reports online
-    if (navigator.onLine) schedulePing()
+    if (typeof navigator !== 'undefined' && navigator.onLine) schedulePing()
 
     return () => {
       window.removeEventListener('online',  handleOnline)

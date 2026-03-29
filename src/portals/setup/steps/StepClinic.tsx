@@ -86,7 +86,13 @@ export function StepClinic({ data, update, onNext }: Props) {
         setLoading(false)
         return
       }
-      await supabase.from('clinics').update({ logo_url: path }).eq('id', clinicId)
+      const { error: logoUpdateError } = await supabase
+        .from('clinics').update({ logo_url: path }).eq('id', clinicId)
+      if (logoUpdateError) {
+        setError(`Logo save failed: ${logoUpdateError.message}`)
+        setLoading(false)
+        return
+      }
     }
 
     // Refresh session so jwt-enrichment hook picks up the new staff record

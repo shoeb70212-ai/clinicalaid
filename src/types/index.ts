@@ -320,6 +320,7 @@ export interface AuthState {
   totpRequired: boolean
   mfaVerified:  boolean
   loading:      boolean
+  authError:    string | null   // set when staff DB query fails (not when no record exists)
 }
 
 /** Single item in a prescription (used in draft and DB) */

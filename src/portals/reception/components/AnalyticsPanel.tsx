@@ -200,8 +200,8 @@ export function AnalyticsPanel({ clinicId, currency = '₹' }: Props) {
                   Top Complaints
                 </p>
                 <div className="flex flex-col gap-1.5">
-                  {diagnoses.map((d, i) => (
-                    <div key={i} className="flex items-center gap-2">
+                  {diagnoses.map((d) => (
+                    <div key={d.name} className="flex items-center gap-2">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between mb-0.5">
                           <p className="truncate text-xs capitalize font-medium" style={{ color: '#2a3437' }}>{d.name}</p>
@@ -227,8 +227,8 @@ export function AnalyticsPanel({ clinicId, currency = '₹' }: Props) {
                   Top Prescribed Drugs
                 </p>
                 <div className="flex flex-col gap-1.5">
-                  {drugs.map((d, i) => (
-                    <div key={i} className="flex items-center gap-2">
+                  {drugs.map((d) => (
+                    <div key={d.name} className="flex items-center gap-2">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between mb-0.5">
                           <p className="truncate text-xs font-medium uppercase" style={{ color: '#2a3437' }}>{d.name}</p>

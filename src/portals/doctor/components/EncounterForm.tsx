@@ -76,6 +76,12 @@ export function EncounterForm({
     if (field === 'cc') ccBaseTextRef.current = draft.chiefComplaint ?? ''
     else notesBaseTextRef.current = draft.quickNotes ?? ''
 
+    // Map patient's preferred language to a BCP-47 voice locale
+    const VOICE_LOCALE: Record<string, string> = {
+      en: 'en-IN', hi: 'hi-IN', mr: 'mr-IN', ta: 'ta-IN',
+    }
+    const voiceLang = VOICE_LOCALE[entry.patient?.preferred_language ?? ''] ?? 'en-IN'
+
     const ctrl = createVoiceController(
       (transcript) => {
         const base = field === 'cc' ? ccBaseTextRef.current : notesBaseTextRef.current
@@ -84,6 +90,7 @@ export function EncounterForm({
         else                onUpdateDraft({ quickNotes:     base + sep + transcript })
       },
       (msg) => { setVoiceError(msg); setVoiceField(null) },
+      voiceLang,
     )
     ref.current = ctrl
 
@@ -108,11 +115,8 @@ export function EncounterForm({
   }
 
   const rxItems      = draft.prescriptionItems ?? []
-  const interactions = useMemo(
-    () => checkInteractions(rxItems.map((i) => i.drug_name)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [rxItems.map((i) => i.drug_name).join(',')],
-  )
+  const drugNames    = useMemo(() => rxItems.map((i) => i.drug_name), [rxItems])
+  const interactions = useMemo(() => checkInteractions(drugNames), [drugNames])
 
   return (
     <div className="flex flex-col gap-3 overflow-y-auto p-4">
@@ -206,7 +210,8 @@ export function EncounterForm({
               <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-gray-100 bg-white shadow-lg">
                 {icdResults.map((e) => (
                   <button key={e.code} type="button"
-                    onMouseDown={() => addIcdCode(e.code)}
+                    onMouseDown={(ev) => { ev.preventDefault(); addIcdCode(e.code) }}
+                    onKeyDown={(ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); addIcdCode(e.code) } }}
                     className="flex w-full cursor-pointer items-baseline gap-2 px-3 py-2 text-left text-xs hover:bg-[#e0f4f4]">
                     <span className="shrink-0 font-bold" style={{ color: '#006a6a' }}>{e.code}</span>
                     <span className="min-w-0 truncate" style={{ color: '#566164' }}>{e.label}</span>

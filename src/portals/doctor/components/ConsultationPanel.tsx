@@ -122,13 +122,18 @@ export function ConsultationPanel({ entry, clinicId, doctorId, staffId, online, 
         return
       }
 
+      // Visit is saved — clear the draft now (source of truth is the visits table)
+      clearDraft(staffId, entry.id)
+
+      // Best-effort: write a convenience summary to queue_entries.notes.
+      // If this fails due to an OCC race (another write arrived between the status
+      // change and now), the visit record is already safe — we silently ignore it.
       const notes = JSON.stringify({
         chiefComplaint:    draft.chiefComplaint,
         quickNotes:        draft.quickNotes,
         prescriptionItems: draft.prescriptionItems ?? [],
       })
-      const notesResult = await updateQueueNotes(entry.id, result.data.version, notes)
-      if (notesResult.success) clearDraft(staffId, entry.id)
+      await updateQueueNotes(entry.id, result.data.version, notes)
     }
 
     setLoading(false)

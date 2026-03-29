@@ -42,12 +42,9 @@ export default function DoctorPortal() {
   }, [clinic?.primary_color])
 
   useEffect(() => {
-    if (sidebarOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
-    }
-    return () => { document.body.style.overflow = '' }
+    const prev = document.body.style.overflow
+    document.body.style.overflow = sidebarOpen ? 'hidden' : ''
+    return () => { document.body.style.overflow = prev }
   }, [sidebarOpen])
 
   const inConsultation = useMemo(
