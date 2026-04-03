@@ -20,6 +20,13 @@ interface Props {
 export function QueuePanel({ queue, staffRole, online, onUpdate, avgSeconds = 600 }: Props) {
   const { t } = useTranslation()
   const [transitionError, setTransitionError] = useState<string | null>(null)
+  const [now, setNow] = useState(() => Date.now())
+
+  // Update the timestamp every second to keep elapsed time accurate
+  useState(() => {
+    const interval = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(interval)
+  })
 
   const active = queue.filter((e) => !['COMPLETED', 'CANCELLED'].includes(e.status))
 
@@ -43,8 +50,9 @@ export function QueuePanel({ queue, staffRole, online, onUpdate, avgSeconds = 60
 
   // Time already consumed by the IN_CONSULTATION patient
   const inConsultation = active.find((e) => e.status === 'IN_CONSULTATION')
-  const elapsedSecs = inConsultation?.called_at
-    ? Math.floor((Date.now() - new Date(inConsultation.called_at).getTime()) / 1000)
+  const startedAt = inConsultation?.consultation_started_at ?? inConsultation?.called_at
+  const elapsedSecs = startedAt
+    ? Math.floor((now - new Date(startedAt).getTime()) / 1000)
     : 0
   const remainingSecs = Math.max(0, avgSeconds - elapsedSecs)
 

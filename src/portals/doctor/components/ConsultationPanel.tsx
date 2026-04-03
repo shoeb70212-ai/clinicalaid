@@ -56,8 +56,12 @@ export function ConsultationPanel({ entry, clinicId, doctorId, staffId, online, 
       .eq('clinic_id', clinicId)
       .order('created_at', { ascending: false })
       .limit(20)
-      .then(({ data }) => {
-        if (!data || data.length === 0) { setVisitMeta({ count: 0, lastDate: null }); return }
+      .then(({ data, error }) => {
+        if (error || !data || data.length === 0) {
+          setVisitMeta({ count: 0, lastDate: null })
+          if (error) console.error('[ConsultationPanel] Visit history fetch failed:', error.message)
+          return
+        }
         const lastDate = new Date(data[0].created_at)
         const diffDays = Math.floor((Date.now() - lastDate.getTime()) / 86400000)
         const label = diffDays === 0 ? 'today' : diffDays === 1 ? 'yesterday' : `${diffDays} days ago`

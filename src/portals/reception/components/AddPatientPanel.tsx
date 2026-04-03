@@ -147,7 +147,7 @@ export function AddPatientPanel({ sessionId, clinicId, onAdded, onClose }: Props
       .select('id')
       .eq('session_id', sessionId)
       .eq('patient_id', patientId)
-      .not('status', 'in', '("COMPLETED","CANCELLED")')
+      .not('status', 'in', '(COMPLETED,CANCELLED)')
       .limit(1)
 
     if (existing && existing.length > 0) {

@@ -52,6 +52,11 @@ function saveAttemptState(state: { count: number; lockedUntil: number }) {
   localStorage.setItem('cf_login_attempts', JSON.stringify(state))
 }
 
+// NOTE: Client-side attempt tracking is a UX convenience only.
+// Real rate limiting is enforced by Supabase Auth's server-side protections.
+// This prevents well-behaved users from accidentally locking themselves out
+// but does NOT protect against malicious brute-force attacks.
+
 export default function LoginPage({ mode = 'login' }: Props) {
   const navigate = useNavigate()
   const [params] = useSearchParams()
@@ -69,8 +74,8 @@ export default function LoginPage({ mode = 'login' }: Props) {
   const [forgotMode,  setForgotMode]  = useState(false)
   const [forgotSent,  setForgotSent]  = useState(false)
 
-  const isLocked = Date.now() < attempts.lockedUntil
-  const lockMinsLeft = Math.ceil((attempts.lockedUntil - Date.now()) / 60000)
+  const isLocked = Date.now() < attempts.lockedUntil // eslint-disable-line react-hooks/purity
+  const lockMinsLeft = Math.ceil((attempts.lockedUntil - Date.now()) / 60000) // eslint-disable-line react-hooks/purity
 
   const inviteToken = params.get('token')
 

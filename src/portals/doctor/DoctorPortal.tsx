@@ -7,6 +7,7 @@ import { useQueue } from '../../hooks/useQueue'
 import { useInactivityLogout } from '../../hooks/useInactivityLogout'
 import { useConnectionStatus } from '../../hooks/useConnectionStatus'
 import { useDarkMode } from '../../hooks/useDarkMode'
+import { useClinicTheme } from '../../hooks/useClinicTheme'
 import { OfflineBanner } from '../../components/shared/OfflineBanner'
 import { LoadingSpinner } from '../../components/shared/LoadingSpinner'
 import { DoctorQueueSidebar } from './components/DoctorQueueSidebar'
@@ -21,6 +22,7 @@ export default function DoctorPortal() {
   const { staff, clinic, signOut } = useAuth()
   const online = useConnectionStatus()
   const { dark, toggle: toggleDark } = useDarkMode()
+  useClinicTheme(clinic)
   const isSolo = clinic?.clinic_mode === 'solo'
 
   const { session, loading: sessionLoading, refetch: refetchSession } = useSession(staff?.id ?? null)
@@ -42,13 +44,6 @@ export default function DoctorPortal() {
     setActiveEntry(entry)
     setSidebarOpen(false)
   }, [])
-
-  // Apply clinic's brand color to CSS variable so bg-clinic / text-clinic utilities work
-  useEffect(() => {
-    if (clinic?.primary_color) {
-      document.documentElement.style.setProperty('--color-clinic', clinic.primary_color)
-    }
-  }, [clinic?.primary_color])
 
   useEffect(() => {
     const prev = document.body.style.overflow

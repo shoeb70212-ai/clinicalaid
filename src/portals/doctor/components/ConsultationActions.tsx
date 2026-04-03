@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Download, FileText } from 'lucide-react'
 import type { QueueEntryWithPatient, QueueStatus } from '../../../types'
 
@@ -26,6 +26,15 @@ export function ConsultationActions({
   const [showReferral,    setShowReferral]    = useState(false)
   const [referToValue,    setReferToValue]    = useState('')
   const [urgency,         setUrgency]         = useState<Urgency>('routine')
+  const [confirmEnd,      setConfirmEnd]      = useState(false)
+
+  // Auto-revert confirm state after 2 seconds
+  useEffect(() => {
+    if (!confirmEnd) return
+    const t = setTimeout(() => setConfirmEnd(false), 2000)
+    return () => clearTimeout(t)
+  }, [confirmEnd])
+
   return (
     <>
       {/* Inline referral form */}
@@ -96,11 +105,22 @@ export function ConsultationActions({
           )}
           {entry.status === 'IN_CONSULTATION' && (
             <>
-              <button onClick={() => onTransition('COMPLETED')}
+              <button onClick={() => {
+                if (confirmEnd) {
+                  onTransition('COMPLETED')
+                  setConfirmEnd(false)
+                } else {
+                  setConfirmEnd(true)
+                }
+              }}
                 disabled={loading || !online}
                 className="flex-1 cursor-pointer rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-all active:scale-95 disabled:opacity-60"
-                style={{ background: 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dark))' }}>
-                ✓ End Consultation
+                style={{
+                  background: confirmEnd
+                    ? 'linear-gradient(135deg, #dc2626, #991b1b)'
+                    : 'linear-gradient(135deg, var(--color-primary), var(--color-primary-dark))'
+                }}>
+                {confirmEnd ? '⚠ Confirm End?' : '✓ End Consultation'}
               </button>
               <button onClick={() => onTransition('SKIPPED')}
                 disabled={loading || !online}

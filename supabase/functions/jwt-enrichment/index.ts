@@ -53,7 +53,7 @@ Deno.serve(async (req: Request) => {
     const customClaims = staffRecord ? {
       clinic_id:     staffRecord.clinic_id,
       staff_id:      staffRecord.id,
-      app_role:      staffRecord.role,
+      role:          staffRecord.role,
       totp_required: staffRecord.totp_required ?? true,
     } : {}
 

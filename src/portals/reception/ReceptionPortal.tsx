@@ -6,6 +6,7 @@ import { useSession } from '../../hooks/useSession'
 import { useQueue } from '../../hooks/useQueue'
 import { useInactivityLogout } from '../../hooks/useInactivityLogout'
 import { useDarkMode } from '../../hooks/useDarkMode'
+import { useClinicTheme } from '../../hooks/useClinicTheme'
 import { OfflineBanner } from '../../components/shared/OfflineBanner'
 import { useConnectionStatus } from '../../hooks/useConnectionStatus'
 import { QueuePanel } from './components/QueuePanel'
@@ -23,13 +24,7 @@ export default function ReceptionPortal() {
   const { staff, clinic, signOut } = useAuth()
   const online = useConnectionStatus()
   const { dark, toggle: toggleDark } = useDarkMode()
-
-  // Apply clinic's brand color to CSS variable so bg-clinic / text-clinic utilities work
-  useEffect(() => {
-    if (clinic?.primary_color) {
-      document.documentElement.style.setProperty('--color-clinic', clinic.primary_color)
-    }
-  }, [clinic?.primary_color])
+  useClinicTheme(clinic)
 
   // Query by clinic_id so receptionists in team mode find the doctor's session.
   const { session, loading: sessionLoading, refetch: refetchSession } = useSession(null, clinic?.id ?? null)

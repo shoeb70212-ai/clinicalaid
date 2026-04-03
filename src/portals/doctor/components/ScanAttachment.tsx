@@ -72,6 +72,11 @@ export function ScanAttachment({ clinicId, queueEntryId, patientId, uploadedBy, 
       setError('Only JPEG, PNG, or WebP images are allowed.')
       return
     }
+    // Guard: reject oversized files before loading into memory (prevents browser tab crash)
+    if (file.size > 50_000_000) {
+      setError('File too large — maximum 50 MB. Please use a smaller image.')
+      return
+    }
 
     setError(null)
     if (preview) URL.revokeObjectURL(preview)

@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState } from 'react'
+import { useEffect, useCallback, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import type { QueueEntry, QueueEntryWithPatient } from '../types'
 
@@ -11,6 +11,9 @@ export function useQueue(sessionId: string | null) {
   const [queue, setQueue] = useState<QueueEntryWithPatient[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const pendingInsertIds = useRef<string[]>([])
+  const insertTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const fetchQueue = useCallback(async () => {
     if (!sessionId) return
@@ -35,17 +38,17 @@ export function useQueue(sessionId: string | null) {
     setLoading(false)
   }, [sessionId])
 
-  /** Fetch a single entry with patient join — used for INSERT delta updates */
-  const fetchSingleEntry = useCallback(async (entryId: string): Promise<QueueEntryWithPatient | null> => {
+  /** Fetch multiple entries with patient join — used for batched INSERT delta updates */
+  const fetchBatchEntries = useCallback(async (entryIds: string[]): Promise<QueueEntryWithPatient[]> => {
+    if (entryIds.length === 0) return []
     const { data } = await supabase
       .from('queue_entries')
       .select(`
         *,
         patient:patients(id, name, dob, gender, mobile, blood_group, preferred_language)
       `)
-      .eq('id', entryId)
-      .maybeSingle()
-    return data as QueueEntryWithPatient | null
+      .in('id', entryIds)
+    return (data as QueueEntryWithPatient[]) ?? []
   }, [])
 
   useEffect(() => {
@@ -66,10 +69,19 @@ export function useQueue(sessionId: string | null) {
         },
         (payload) => {
           if (payload.eventType === 'INSERT') {
-            // Fetch the new entry with patient join, then append
-            fetchSingleEntry(payload.new.id).then((entry) => {
-              if (entry) setQueue((prev) => sortQueue([...prev, entry]))
-            })
+            // Batch multiple rapid INSERTs together
+            const newId = payload.new.id as string | null
+            if (!newId) return
+            pendingInsertIds.current.push(newId)
+            clearTimeout(insertTimer.current)
+            // Single INSERT: fetch immediately. Batch: wait 200ms for more.
+            const delay = pendingInsertIds.current.length === 1 ? 0 : 200
+            insertTimer.current = setTimeout(async () => {
+              const ids = [...pendingInsertIds.current]
+              pendingInsertIds.current = []
+              const entries = await fetchBatchEntries(ids)
+              if (entries.length > 0) setQueue((prev) => sortQueue([...prev, ...entries]))
+            }, delay)
           } else if (payload.eventType === 'UPDATE') {
             // Merge updated queue_entry fields — explicitly preserve the patient join
             // because Realtime payload.new contains only raw table columns (no joins)
@@ -89,8 +101,9 @@ export function useQueue(sessionId: string | null) {
 
     return () => {
       supabase.removeChannel(channel)
+      if (insertTimer.current) clearTimeout(insertTimer.current)
     }
-  }, [sessionId, fetchQueue, fetchSingleEntry])
+  }, [sessionId, fetchQueue, fetchBatchEntries])
 
   return { queue, loading, error, refetch: fetchQueue }
 }

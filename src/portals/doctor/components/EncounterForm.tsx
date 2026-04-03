@@ -204,7 +204,7 @@ export function EncounterForm({
               value={icdQuery}
               onChange={(e) => { setIcdQuery(e.target.value); setIcdDropOpen(true) }}
               onFocus={() => setIcdDropOpen(true)}
-              onBlur={() => setTimeout(() => setIcdDropOpen(false), 150)}
+              onBlur={() => setIcdDropOpen(false)}
               placeholder="Search ICD-10 code or condition…"
               className="w-full rounded-lg px-3 py-2 text-xs focus:outline-none"
               style={{ backgroundColor: 'var(--color-surface-low)', border: '1.5px solid transparent', color: 'var(--color-ink)' }}
